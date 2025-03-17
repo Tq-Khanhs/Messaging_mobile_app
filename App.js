@@ -7,6 +7,7 @@ import VerificationScreen from "./Screens/VerificationScreen";
 import SuccessScreen from "./Screens/SuccessScreen";
 import CreateNewPasswordScreen from "./Screens/CreateNewPassword";
 import MessagesScreen from "./Screens/MessageScreen";
+import ContactsScreen from "./Screens/ContactsScreen";
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -61,6 +62,11 @@ export default function App() {
         <Stack.Screen
           name="MessagesScreen"
           component={MessagesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ContactsScreen"
+          component={ContactsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

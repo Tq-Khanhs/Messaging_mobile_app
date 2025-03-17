@@ -142,27 +142,25 @@ const MessagesScreen = ({ navigation }) => {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
       />
-      
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-          <Ionicons name="chatbubble" size={24} color="#0068FF" />
-          {/* <Text style={styles.activeNavText}>Tin nhắn</Text> */}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="people-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="grid-outline" size={24} color="#888" />
-          <View style={styles.navBadge} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="time-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person-outline" size={24} color="#888" />
-        </TouchableOpacity>
-      </View>
+      {/* Bottom Navigation */}
+            <View style={styles.bottomNav}>
+              <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} >
+                <Ionicons name="chatbubble-outline" size={24}    color="#0068FF"/>
+                <Text style={styles.activeNavText}>Tin Nhắn</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
+                <Ionicons name="people" size={24} color="#888" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem}>
+                <Ionicons name="grid-outline" size={24} color="#888" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem}>
+                <Ionicons name="time-outline" size={24} color="#888" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navItem}>
+                <Ionicons name="person-outline" size={24} color="#888" />
+              </TouchableOpacity>
+            </View>
     </SafeAreaView>
   );
 };
@@ -320,7 +318,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    position: 'relative',
   },
   activeNavItem: {
     borderTopWidth: 2,
@@ -331,15 +328,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  navBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 20,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
-  },
 });
-
 export default MessagesScreen;
