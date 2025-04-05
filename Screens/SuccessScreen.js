@@ -11,31 +11,31 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const SuccessScreen = ({ navigation }) => {
-    const handleSubmit = () => {
-        Alert.alert(
-          `Xác nhận`,
-          'Chú ý: Bạn sẽ không thể đăng nhập ở 1 số thiết bị khác nếu chưa tạo mật khẩu. Chọn Để sau, bạn sẽ phải tạo mật khẩu khi đăng xuất tài khoản',
-          [
-            {
-              text: 'Để sau',
-              style: 'cancel',
-            },
-            {
-              text: 'Tạo mật khẩu',
-              onPress: () => {
-                navigation.navigate('CreateNewPassword');
-                
-              },
-              style: 'default',
-            },
-          ],
-          { cancelable: false }
-        );
-      };
+  const handleSubmit = () => {
+    Alert.alert(
+      `Xác nhận`,
+      'Chú ý: Bạn sẽ không thể đăng nhập ở 1 số thiết bị khác nếu chưa tạo mật khẩu. Chọn Để sau, bạn sẽ phải tạo mật khẩu khi đăng xuất tài khoản',
+      [
+        {
+          text: 'Để sau',
+          style: 'cancel',
+        },
+        {
+          text: 'Tạo mật khẩu',
+          onPress: () => {
+            navigation.navigate('CreateNewPassword');
+
+          },
+          style: 'default',
+        },
+      ],
+      { cancelable: false }
+    );
+  };
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
-      
+
       <Text style={styles.headerTitle}>Tạo mật khẩu mới</Text>
 
       <View style={styles.iconContainer}>
@@ -52,14 +52,14 @@ const SuccessScreen = ({ navigation }) => {
       </Text>
 
       <View style={styles.actionContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.createPasswordButton}
           onPress={() => navigation.navigate('CreateNewPassword')}
         >
           <Text style={styles.createPasswordText} onPress={navigation.navigate('CreateNewPassword')}>TẠO MẬT KHẨU</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleSubmit}
         >
           <Text style={styles.laterText} onPress={navigation.goBack()}>Để sau</Text>

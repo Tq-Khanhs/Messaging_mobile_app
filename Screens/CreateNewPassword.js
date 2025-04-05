@@ -25,12 +25,12 @@ const CreatePasswordScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
-      
+
 
 
 
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -59,7 +59,7 @@ const CreatePasswordScreen = ({ navigation }) => {
               placeholder="Nhập mật khẩu mới"
               placeholderTextColor="#666666"
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.showButton}
               onPress={() => setShowPassword(!showPassword)}
             >
@@ -93,7 +93,7 @@ const CreatePasswordScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
           styles.updateButton,
           password === confirmPassword && password.length > 0 && styles.updateButtonActive

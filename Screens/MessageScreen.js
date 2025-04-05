@@ -45,7 +45,7 @@ const MessagesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('priority');
 
   const renderConversationItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.conversationItem}
       onPress={() => navigation.navigate('ChatDetail', { conversation: item })}
     >
@@ -61,7 +61,7 @@ const MessagesScreen = ({ navigation }) => {
           <Image source={item.avatar} style={styles.avatar} />
         )}
       </View>
-      
+
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
           <View style={styles.nameContainer}>
@@ -91,7 +91,7 @@ const MessagesScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
-      
+
 
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -101,19 +101,19 @@ const MessagesScreen = ({ navigation }) => {
             placeholder="Tìm kiếm"
             placeholderTextColor="#888"
           />
-        
-            <TouchableOpacity style={styles.headerButton}>
-                <Ionicons name="qr-code" size={22} color="#FFF" />
-            </TouchableOpacity>
-             <TouchableOpacity style={styles.headerButton}>
-                <Feather name="plus" size={24} color="#FFF" />
-            </TouchableOpacity>
+
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="qr-code" size={22} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton}>
+            <Feather name="plus" size={24} color="#FFF" />
+          </TouchableOpacity>
         </View>
       </View>
-      
-   
+
+
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'priority' && styles.activeTab]}
           onPress={() => setActiveTab('priority')}
         >
@@ -121,7 +121,7 @@ const MessagesScreen = ({ navigation }) => {
             Ưu tiên
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'other' && styles.activeTab]}
           onPress={() => setActiveTab('other')}
         >
@@ -134,8 +134,8 @@ const MessagesScreen = ({ navigation }) => {
           <Ionicons name="filter" size={20} color="#888" />
         </TouchableOpacity>
       </View>
-      
-   
+
+
       <FlatList
         data={conversations}
         renderItem={renderConversationItem}
@@ -143,24 +143,21 @@ const MessagesScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       />
       {/* Bottom Navigation */}
-            <View style={styles.bottomNav}>
-              <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} >
-                <Ionicons name="chatbubble-outline" size={24}    color="#0068FF"/>
-                <Text style={styles.activeNavText}>Tin Nhắn</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
-                <Ionicons name="people" size={24} color="#888" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navItem}>
-                <Ionicons name="grid-outline" size={24} color="#888" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navItem}>
-                <Ionicons name="time-outline" size={24} color="#888" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navItem}>
-                <Ionicons name="person-outline" size={24} color="#888" />
-              </TouchableOpacity>
-            </View>
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} >
+          <Ionicons name="chatbubble-outline" size={24} color="#0068FF" />
+          <Text style={styles.activeNavText}>Tin Nhắn</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
+          <Ionicons name="people" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="time-outline" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="person-outline" size={24} color="#888" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -188,7 +185,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 40,
     width: 400
-    
+
   },
   searchInput: {
     flex: 1,

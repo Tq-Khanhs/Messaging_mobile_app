@@ -18,10 +18,10 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
-      
-      
+
+
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -30,7 +30,7 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Đăng nhập</Text>
       </View>
 
-      
+
       <Text style={styles.instructions}>
         Vui lòng nhập số điện thoại và mật khẩu để đăng nhập
       </Text>
@@ -46,7 +46,7 @@ const LoginScreen = ({ navigation }) => {
             keyboardType="phone-pad"
           />
           {phoneNumber.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.clearButton}
               onPress={() => setPhoneNumber('')}
             >
@@ -64,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
             placeholderTextColor="#666666"
             secureTextEntry={!showPassword}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.showPasswordButton}
             onPress={() => setShowPassword(!showPassword)}
           >

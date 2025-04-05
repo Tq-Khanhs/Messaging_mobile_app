@@ -21,19 +21,19 @@ const SignUpScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
-      
-      <TouchableOpacity 
+
+
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
         <Icon name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 
-     
+
       <Text style={styles.title}>Nhập số điện thoại</Text>
 
-    
+
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.countryCodeButton}>
           <Text style={styles.countryCodeText}>+84</Text>
@@ -48,9 +48,9 @@ const SignUpScreen = ({ navigation }) => {
         />
       </View>
 
-      
+
       <View style={styles.termsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() => setTermsAccepted(!termsAccepted)}
         >
@@ -63,7 +63,7 @@ const SignUpScreen = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() => setSocialTermsAccepted(!socialTermsAccepted)}
         >
@@ -77,18 +77,19 @@ const SignUpScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[
           styles.continueButton,
           (!termsAccepted || !socialTermsAccepted) && styles.continueButtonDisabled
         ]}
         disabled={!termsAccepted || !socialTermsAccepted}
+        onPress={() => navigation.navigate("CreatePasswordScreen")}
       >
         <Text style={styles.continueButtonText}>Tiếp tục</Text>
       </TouchableOpacity>
 
-      
+
       <View style={styles.loginContainer}>
         <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>

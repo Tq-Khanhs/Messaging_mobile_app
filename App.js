@@ -8,10 +8,15 @@ import SuccessScreen from "./Screens/SuccessScreen";
 import CreateNewPasswordScreen from "./Screens/CreateNewPassword";
 import MessagesScreen from "./Screens/MessageScreen";
 import ContactsScreen from "./Screens/ContactsScreen";
+import CreatePasswordScreen from "./Screens/CreatePassword";
+import FillName from "./Screens/FillNameScreen";
+import PersonalInfoScreen from "./Screens/PersonalInfo";
+import UpdateAvatar from "./Screens/UploadAvatarScreen";
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+
 
 const Stack = createStackNavigator();
 
@@ -67,6 +72,26 @@ export default function App() {
         <Stack.Screen
           name="ContactsScreen"
           component={ContactsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CreatePasswordScreen"
+          component={CreatePasswordScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="FillName"
+          component={FillName}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PersonalInfo"
+          component={PersonalInfoScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UploadAvt"
+          component={UpdateAvatar}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

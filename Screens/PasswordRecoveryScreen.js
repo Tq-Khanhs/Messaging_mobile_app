@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const PasswordRecoveryScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  
+
 
   const handleSubmit = () => {
     Alert.alert(
@@ -38,11 +38,11 @@ const PasswordRecoveryScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
-      
 
-      
+
+
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -51,12 +51,12 @@ const PasswordRecoveryScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Lấy lại mật khẩu</Text>
       </View>
 
-      
+
       <Text style={styles.instructions}>
         Nhập số điện thoại để lấy lại mật khẩu
       </Text>
 
-      
+
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <TextInput
@@ -68,7 +68,7 @@ const PasswordRecoveryScreen = ({ navigation }) => {
             keyboardType="phone-pad"
           />
           {phoneNumber.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.clearButton}
               onPress={() => setPhoneNumber('')}
             >
@@ -78,7 +78,7 @@ const PasswordRecoveryScreen = ({ navigation }) => {
         </View>
       </View>
 
-      
+
       <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
         <Icon name="arrow-forward" size={24} color="#FFFFFF" />
       </TouchableOpacity>

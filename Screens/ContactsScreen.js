@@ -11,8 +11,7 @@ import {
   SectionList,
   SafeAreaView,
 } from 'react-native';
-import { Ionicons, Feather, MaterialIcons, FontAwesome } from '@expo/vector-icons';
-
+import { Ionicons } from '@expo/vector-icons';
 
 const CONTACTS_DATA = [
   {
@@ -39,43 +38,40 @@ const CONTACTS_DATA = [
   },
 ];
 
-
 const GROUPS_DATA = [
-  { 
-    id: '1', 
-    name: 'Nhóm 12 _ CNM', 
+  {
+    id: '1',
+    name: 'Nhóm 12 _ CNM',
     lastMessage: 'Bạn: Phần backend ai thực hiện z á @All',
     time: '30 phút',
     memberCount: 5,
     avatars: [
-        require('../assets/icon.png'),
-        require('../assets/icon.png'),
+      require('../assets/icon.png'),
+      require('../assets/icon.png'),
     ]
   },
-  { 
-    id: '2', 
-    name: 'Nhóm 8 TTĐT_TH(1-3)', 
+  {
+    id: '2',
+    name: 'Nhóm 8 TTĐT_TH(1-3)',
     lastMessage: '[Hình ảnh]',
     time: '1 giờ',
     memberCount: 5,
     avatars: [
-        require('../assets/icon.png'),
-        require('../assets/icon.png'),
+      require('../assets/icon.png'),
+      require('../assets/icon.png'),
     ]
   },
-  { 
-    id: '3', 
-    name: 'NOW_TH_T3_10_12_KTTKPM', 
+  {
+    id: '3',
+    name: 'NOW_TH_T3_10_12_KTTKPM',
     lastMessage: 'Hôm nay (17/03) là sinh nhật của Nhựt Anh Nguyễn,...',
     time: '13 giờ',
     memberCount: 30,
     avatars: [
-        require('../assets/icon.png'),
-        require('../assets/icon.png'),
+      require('../assets/icon.png'),
+      require('../assets/icon.png'),
     ],
-  
   },
-  
 ];
 
 const SPECIAL_SECTIONS = [
@@ -95,7 +91,6 @@ const SPECIAL_SECTIONS = [
     iconColor: '#0068FF',
     iconBgColor: '#0068FF20',
   },
- 
 ];
 
 const ContactsScreen = ({ navigation }) => {
@@ -144,20 +139,20 @@ const ContactsScreen = ({ navigation }) => {
     <TouchableOpacity style={styles.groupItem}>
       <View style={styles.groupAvatarContainer}>
         {item.avatars.slice(0, 2).map((avatar, index) => (
-          <Image 
-            key={index} 
-            source={avatar} 
+          <Image
+            key={index}
+            source={avatar}
             style={[
               styles.groupAvatar,
               index === 1 && styles.groupAvatarOverlap
-            ]} 
+            ]}
           />
         ))}
         <View style={styles.memberCountBadge}>
           <Text style={styles.memberCountText}>{item.memberCount}</Text>
         </View>
       </View>
-      
+
       <View style={styles.groupContent}>
         <View style={styles.groupHeader}>
           <Text style={styles.groupName} numberOfLines={1}>{item.name}</Text>
@@ -201,9 +196,9 @@ const ContactsScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['right', 'left']}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -218,10 +213,10 @@ const ContactsScreen = ({ navigation }) => {
           <Ionicons name="person-add" size={22} color="#FFF" />
         </TouchableOpacity>
       </View>
-      
+
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
           onPress={() => setActiveTab('friends')}
         >
@@ -229,7 +224,7 @@ const ContactsScreen = ({ navigation }) => {
             Bạn bè
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'groups' && styles.activeTab]}
           onPress={() => setActiveTab('groups')}
         >
@@ -238,69 +233,65 @@ const ContactsScreen = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-      
-     
-      {activeTab === 'friends' ? (
-        <>
-          <FlatList
-            data={SPECIAL_SECTIONS}
-            renderItem={renderSpecialSection}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            style={styles.specialSectionsList}
-          />
-          
 
-          <View style={styles.filtersContainer}>
-            <TouchableOpacity 
-              style={[styles.filterButton, activeFilter === 'all' && styles.activeFilterButton]}
-              onPress={() => setActiveFilter('all')}
-            >
-              <Text style={[styles.filterText, activeFilter === 'all' && styles.activeFilterText]}>
-                Tất cả 75
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.filterButton, activeFilter === 'recent' && styles.activeFilterButton]}
-              onPress={() => setActiveFilter('recent')}
-            >
-              <Text style={[styles.filterText, activeFilter === 'recent' && styles.activeFilterText]}>
-                Mới truy cập
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          
-          <SectionList
-            sections={CONTACTS_DATA}
-            renderItem={renderContactItem}
-            renderSectionHeader={renderSectionHeader}
-            keyExtractor={item => item.id}
-            stickySectionHeadersEnabled={false}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
-      ) : activeTab === 'groups' ? (
-        <>
-         
-          {renderCreateGroupButton()}
-          
-          {renderGroupsHeader()}
-          
-         
-          <FlatList
-            data={GROUPS_DATA}
-            renderItem={renderGroupItem}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Official Accounts Tab</Text>
-        </View>
-      )}
-      
+      {/* Content Container */}
+      <View style={styles.contentContainer}>
+        {activeTab === 'friends' ? (
+          <>
+            <View style={styles.specialSectionsContainer}>
+              <FlatList
+                data={SPECIAL_SECTIONS}
+                renderItem={renderSpecialSection}
+                keyExtractor={item => item.id}
+                scrollEnabled={false}
+              />
+            </View>
+
+            <View style={styles.filtersContainer}>
+              <TouchableOpacity
+                style={[styles.filterButton, activeFilter === 'all' && styles.activeFilterButton]}
+                onPress={() => setActiveFilter('all')}
+              >
+                <Text style={[styles.filterText, activeFilter === 'all' && styles.activeFilterText]}>
+                  Tất cả 75
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, activeFilter === 'recent' && styles.activeFilterButton]}
+                onPress={() => setActiveFilter('recent')}
+              >
+                <Text style={[styles.filterText, activeFilter === 'recent' && styles.activeFilterText]}>
+                  Mới truy cập
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <SectionList
+              sections={CONTACTS_DATA}
+              renderItem={renderContactItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={item => item.id}
+              stickySectionHeadersEnabled={false}
+              showsVerticalScrollIndicator={false}
+              style={styles.sectionList}
+            />
+          </>
+        ) : (
+          <>
+            {renderCreateGroupButton()}
+            {renderGroupsHeader()}
+
+            <FlatList
+              data={GROUPS_DATA}
+              renderItem={renderGroupItem}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
+              style={styles.groupsList}
+            />
+          </>
+        )}
+      </View>
+
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MessagesScreen")}>
@@ -309,9 +300,6 @@ const ContactsScreen = ({ navigation }) => {
         <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
           <Ionicons name="people" size={24} color="#0068FF" />
           <Text style={styles.activeNavText}>Danh bạ</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="grid-outline" size={24} color="#888" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="time-outline" size={24} color="#888" />
@@ -328,6 +316,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1A1A1A',
+  },
+  contentContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -381,16 +372,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '500',
   },
-  specialSectionsList: {
+  specialSectionsContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#333',
-    height: 240
   },
   specialSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   specialSectionIcon: {
     width: 40,
@@ -444,6 +434,9 @@ const styles = StyleSheet.create({
   activeFilterText: {
     color: '#FFF',
   },
+  sectionList: {
+    flex: 1,
+  },
   sectionHeader: {
     backgroundColor: '#1A1A1A',
     paddingHorizontal: 16,
@@ -481,6 +474,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Groups tab styles
+  groupsList: {
+    flex: 1,
+  },
   createGroupButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -623,15 +619,6 @@ const styles = StyleSheet.create({
   birthdayText: {
     color: '#FF3B30',
     fontSize: 14,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: '#888',
-    fontSize: 16,
   },
   bottomNav: {
     flexDirection: 'row',

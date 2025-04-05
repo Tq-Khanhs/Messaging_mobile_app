@@ -19,8 +19,8 @@ const VerificationScreen = ({ navigation, route }) => {
     const newCode = [...code];
     newCode[index] = text;
     setCode(newCode);
-    
-    
+
+
     if (text && index < 5) {
       inputRefs.current[index + 1].focus();
     }
@@ -35,9 +35,9 @@ const VerificationScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
-      
+
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -81,8 +81,8 @@ const VerificationScreen = ({ navigation, route }) => {
         <Text style={styles.guideLink}>Hướng dẫn nhận mã</Text>
       </TouchableOpacity>
 
-     
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[
           styles.continueButton,
           code.every(digit => digit) ? styles.continueButtonActive : {}

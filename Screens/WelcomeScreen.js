@@ -28,14 +28,14 @@ const WelcomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
-      
-      
+
+
       <TouchableOpacity style={styles.languageSelector} onPress={toggleModal}>
         <Text style={styles.languageText}>{selectedLanguage}</Text>
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>
 
-      
+
       <View style={styles.logoContainer}>
         <Image
           source={require('../assets/icon.png')}
@@ -44,9 +44,9 @@ const WelcomeScreen = ({ navigation }) => {
         />
       </View>
 
-    
 
-      
+
+
       <View style={styles.paginationContainer}>
         {[0, 1, 2, 3, 4].map((index) => (
           <View
@@ -59,16 +59,16 @@ const WelcomeScreen = ({ navigation }) => {
         ))}
       </View>
 
-      
+
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.loginButton}
           onPress={() => navigation.navigate('Login')}
         >
           <Text style={styles.loginButtonText}>Đăng nhập</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.registerButton}
           onPress={() => navigation.navigate('SignUp')}
         >
@@ -76,7 +76,7 @@ const WelcomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      
+
       <Modal
         animationType="slide"
         transparent={true}
