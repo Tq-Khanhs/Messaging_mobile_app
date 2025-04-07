@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client"
+
+import { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -8,35 +10,102 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+  Alert,
+  ActivityIndicator,
+} from "react-native"
+import Icon from "react-native-vector-icons/MaterialIcons"
+import { useAuth } from "../context/AuthContext"
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window")
 
-const SignUpScreen = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [socialTermsAccepted, setSocialTermsAccepted] = useState(false);
+
+const SignUpScreen = ({ navigation, route }) => {
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [socialTermsAccepted, setSocialTermsAccepted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+
+  const [countryCode, setCountryCode] = useState("+84")
+  const [countryName, setCountryName] = useState("Vietnam")
+
+ 
+  useEffect(() => {
+    if (route.params?.countryCode) {
+      setCountryCode(route.params.countryCode)
+    }
+    if (route.params?.countryName) {
+      setCountryName(route.params.countryName)
+    }
+  }, [route.params])
+
+ 
+  let auth
+  try {
+    auth = useAuth()
+  } catch (e) {
+    console.warn("AuthProvider not found, using fallback implementation")
+    auth = useAuthFallback()
+  }
+
+  const { requestVerificationCode, error } = auth
+
+  const handleContinue = async () => {
+    if (!termsAccepted || !socialTermsAccepted) {
+      return
+    }
+
+    // Validate phone number
+    if (!phoneNumber || phoneNumber.trim() === "") {
+      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại")
+      return
+    }
+
+    // Format phone number with the selected country code
+    let formattedPhoneNumber = phoneNumber
+
+    // Remove leading 0 if present
+    if (formattedPhoneNumber.startsWith("0")) {
+      formattedPhoneNumber = formattedPhoneNumber.substring(1)
+    }
+
+    // Add country code
+    formattedPhoneNumber = `${countryCode}${formattedPhoneNumber}`
+
+    try {
+      setIsLoading(true)
+
+      // Call API to request verification code
+      await requestVerificationCode(formattedPhoneNumber)
+
+      // Navigate to verification screen
+      navigation.navigate("Verification", {
+        phoneNumber: formattedPhoneNumber,
+        isRegistration: true,
+      })
+    } catch (err) {
+      Alert.alert("Lỗi", error || "Không thể gửi mã xác thực. Vui lòng thử lại sau.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Welcome")}>
         <Icon name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 
-
       <Text style={styles.title}>Nhập số điện thoại</Text>
 
-
       <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.countryCodeButton}>
-          <Text style={styles.countryCodeText}>+84</Text>
+        <TouchableOpacity
+          style={styles.countryCodeButton}
+          onPress={() => navigation.navigate("CountryPicker", { currentCode: countryCode })}
+        >
+          <Text style={styles.countryCodeText}>{countryCode}</Text>
           <Icon name="keyboard-arrow-down" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <TextInput
@@ -45,100 +114,90 @@ const SignUpScreen = ({ navigation }) => {
           onChangeText={setPhoneNumber}
           keyboardType="phone-pad"
           placeholderTextColor="#666666"
+          placeholder="Nhập số điện thoại"
         />
       </View>
 
-
       <View style={styles.termsContainer}>
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => setTermsAccepted(!termsAccepted)}
-        >
+        <TouchableOpacity style={styles.checkboxContainer} onPress={() => setTermsAccepted(!termsAccepted)}>
           <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
             {termsAccepted && <Icon name="check" size={16} color="#FFFFFF" />}
           </View>
           <Text style={styles.termsText}>
-            Tôi đồng ý với các{' '}
-            <Text style={styles.termsLink}>điều khoản sử dụng Zalo</Text>
+            Tôi đồng ý với các <Text style={styles.termsLink}>điều khoản sử dụng Zalo</Text>
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => setSocialTermsAccepted(!socialTermsAccepted)}
-        >
+        <TouchableOpacity style={styles.checkboxContainer} onPress={() => setSocialTermsAccepted(!socialTermsAccepted)}>
           <View style={[styles.checkbox, socialTermsAccepted && styles.checkboxChecked]}>
             {socialTermsAccepted && <Icon name="check" size={16} color="#FFFFFF" />}
           </View>
           <Text style={styles.termsText}>
-            Tôi đồng ý với{' '}
-            <Text style={styles.termsLink}>điều khoản Mạng xã hội của Zalo</Text>
+            Tôi đồng ý với <Text style={styles.termsLink}>điều khoản Mạng xã hội của Zalo</Text>
           </Text>
         </TouchableOpacity>
       </View>
 
-
       <TouchableOpacity
         style={[
           styles.continueButton,
-          (!termsAccepted || !socialTermsAccepted) && styles.continueButtonDisabled
+          (!termsAccepted || !socialTermsAccepted || isLoading) && styles.continueButtonDisabled,
         ]}
-        disabled={!termsAccepted || !socialTermsAccepted}
-        onPress={() => navigation.navigate("CreatePasswordScreen")}
+        disabled={!termsAccepted || !socialTermsAccepted || isLoading}
+        onPress={handleContinue}
       >
-        <Text style={styles.continueButtonText}>Tiếp tục</Text>
+        {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.continueButtonText}>Tiếp tục</Text>}
       </TouchableOpacity>
-
 
       <View style={styles.loginContainer}>
         <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
           <Text style={styles.loginLink}>Đăng nhập ngay</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   backButton: {
     padding: 16,
   },
   title: {
     fontSize: 24,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    textAlign: "center",
     marginVertical: 20,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginHorizontal: 16,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#0068FF',
+    borderColor: "#0068FF",
     borderRadius: 8,
     height: 48,
   },
   countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     borderRightWidth: 1,
-    borderRightColor: '#333333',
+    borderRightColor: "#333333",
   },
   countryCodeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     marginRight: 4,
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     paddingHorizontal: 12,
   },
@@ -147,67 +206,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderWidth: 1,
-    borderColor: '#666666',
+    borderColor: "#666666",
     borderRadius: 4,
     marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: '#0068FF',
-    borderColor: '#0068FF',
+    backgroundColor: "#0068FF",
+    borderColor: "#0068FF",
   },
   termsText: {
     flex: 1,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
     lineHeight: 20,
   },
   termsLink: {
-    color: '#0068FF',
+    color: "#0068FF",
   },
   continueButton: {
     marginHorizontal: 16,
     marginTop: 24,
     height: 48,
-    backgroundColor: '#0068FF',
+    backgroundColor: "#0068FF",
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   continueButtonDisabled: {
-    backgroundColor: '#333333',
+    backgroundColor: "#333333",
   },
   continueButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loginText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
   },
   loginLink: {
-    color: '#0068FF',
+    color: "#0068FF",
     fontSize: 14,
   },
-});
+})
 
-export default SignUpScreen;
+export default SignUpScreen
+

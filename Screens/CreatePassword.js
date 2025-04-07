@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+"use client"
+
+import { useState, useEffect } from "react"
 import {
     View,
     Text,
@@ -6,28 +8,61 @@ import {
     TouchableOpacity,
     StyleSheet,
     StatusBar,
-    SafeAreaView
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+    SafeAreaView,
+    ActivityIndicator,
+    Alert,
+} from "react-native"
+import { Ionicons } from "@expo/vector-icons"
+import { useRoute } from "@react-navigation/native"
+import { useAuth } from "../context/AuthContext"
 
 export default function CreatePasswordScreen({ navigation }) {
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isPasswordValid, setIsPasswordValid] = useState(false);
-    const [isConfirmValid, setIsConfirmValid] = useState(false);
+    const [newPassword, setNewPassword] = useState("")
+    const [confirmPassword, setConfirmPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
+    const [isPasswordValid, setIsPasswordValid] = useState(false)
+    const [isConfirmValid, setIsConfirmValid] = useState(false)
+
+    const route = useRoute()
+    const { phoneNumber, firebaseUid } = route.params || {}
+    const { register } = useAuth()
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState(null)
 
     // Validate password
     useEffect(() => {
         // Check if password contains both letters and numbers
-        const hasLettersAndNumbers = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(newPassword);
-        setIsPasswordValid(hasLettersAndNumbers && newPassword.length >= 8);
-    }, [newPassword]);
+        const hasLettersAndNumbers = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(newPassword)
+        setIsPasswordValid(hasLettersAndNumbers && newPassword.length >= 8)
+    }, [newPassword])
 
     // Validate confirm password
     useEffect(() => {
-        setIsConfirmValid(confirmPassword === newPassword && newPassword !== '');
-    }, [confirmPassword, newPassword]);
+        setIsConfirmValid(confirmPassword === newPassword && newPassword !== "")
+    }, [confirmPassword, newPassword])
+
+    const handleCreatePassword = async () => {
+        if (!isPasswordValid || !isConfirmValid) {
+            return
+        }
+
+        try {
+            setIsLoading(true)
+            setError(null)
+
+            // Store the password for later use in registration
+            navigation.navigate("FillName", {
+                phoneNumber,
+                firebaseUid,
+                password: newPassword,
+            })
+        } catch (err) {
+            setError(err.message || "Có lỗi xảy ra. Vui lòng thử lại.")
+            Alert.alert("Lỗi", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -43,18 +78,13 @@ export default function CreatePasswordScreen({ navigation }) {
 
             {/* Instructions */}
             <View style={styles.instructionContainer}>
-                <Text style={styles.instructionText}>
-                    Mật khẩu phải gồm chữ và số.
-                </Text>
+                <Text style={styles.instructionText}>Mật khẩu phải gồm chữ và số.</Text>
             </View>
 
             {/* Password Fields */}
             <View style={styles.formContainer}>
                 <View style={styles.inputRow}>
-                    <TouchableOpacity
-                        style={styles.showButton}
-                        onPress={() => setShowPassword(!showPassword)}
-                    >
+                    <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword(!showPassword)}>
                         <Text style={styles.showButtonText}>HIỆN</Text>
                     </TouchableOpacity>
                 </View>
@@ -70,9 +100,7 @@ export default function CreatePasswordScreen({ navigation }) {
                     />
                     {newPassword.length > 0 && (
                         <View style={styles.validationIcon}>
-                            {isPasswordValid ? (
-                                <Ionicons name="checkmark-circle" size={24} color="#4CD964" />
-                            ) : null}
+                            {isPasswordValid ? <Ionicons name="checkmark-circle" size={24} color="#4CD964" /> : null}
                         </View>
                     )}
                 </View>
@@ -106,50 +134,56 @@ export default function CreatePasswordScreen({ navigation }) {
             <TouchableOpacity
                 style={[
                     styles.updateButton,
-                    (!isPasswordValid || !isConfirmValid) ? styles.updateButtonDisabled : {}
+                    !isPasswordValid || !isConfirmValid || isLoading ? styles.updateButtonDisabled : {},
                 ]}
-                disabled={!isPasswordValid || !isConfirmValid}
-                onPress={() => navigation.navigate("FillName")}
+                disabled={!isPasswordValid || !isConfirmValid || isLoading}
+                onPress={handleCreatePassword}
             >
-                <Text style={[
-                    styles.updateButtonText,
-                    (!isPasswordValid || !isConfirmValid) ? styles.updateButtonTextDisabled : {}
-                ]}>
-                    TIẾP TỤC
-                </Text>
+                {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                    <Text
+                        style={[
+                            styles.updateButtonText,
+                            !isPasswordValid || !isConfirmValid ? styles.updateButtonTextDisabled : {},
+                        ]}
+                    >
+                        TIẾP TỤC
+                    </Text>
+                )}
             </TouchableOpacity>
         </SafeAreaView>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: "#000000",
     },
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
         paddingVertical: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#222222',
+        borderBottomColor: "#222222",
     },
     backButton: {
         marginRight: 16,
     },
     headerTitle: {
-        color: 'white',
+        color: "white",
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: "bold",
     },
     instructionContainer: {
         padding: 16,
         paddingBottom: 24,
     },
     instructionText: {
-        color: 'white',
-        textAlign: 'center',
+        color: "white",
+        textAlign: "center",
         fontSize: 14,
         lineHeight: 20,
     },
@@ -157,29 +191,29 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     inputRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         marginBottom: 8,
     },
     inputLabel: {
-        color: 'white',
+        color: "white",
         fontSize: 16,
     },
     showButton: {
         padding: 4,
     },
     showButtonText: {
-        color: '#8E8E93',
+        color: "#8E8E93",
         fontSize: 14,
     },
     passwordContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
     input: {
         flex: 1,
-        color: 'white',
+        color: "white",
         fontSize: 16,
         paddingVertical: 8,
     },
@@ -189,27 +223,27 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: 1,
-        backgroundColor: '#0A84FF',
+        backgroundColor: "#0A84FF",
         marginVertical: 8,
     },
     updateButton: {
-        backgroundColor: '#0A84FF',
+        backgroundColor: "#0A84FF",
         borderRadius: 25,
         paddingVertical: 12,
         marginHorizontal: 16,
         marginTop: 32,
-        alignItems: 'center',
+        alignItems: "center",
     },
     updateButtonDisabled: {
-        backgroundColor: '#333333', // Darker gray when disabled
+        backgroundColor: "#333333", // Darker gray when disabled
         opacity: 0.7,
     },
     updateButtonText: {
-        color: 'white',
+        color: "white",
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: "bold",
     },
     updateButtonTextDisabled: {
-        color: '#8E8E93', // Lighter gray text when disabled
+        color: "#8E8E93", // Lighter gray text when disabled
     },
-});
+})

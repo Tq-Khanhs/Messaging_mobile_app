@@ -13,15 +13,18 @@ import FillName from "./Screens/FillNameScreen";
 import PersonalInfoScreen from "./Screens/PersonalInfo";
 import UpdateAvatar from "./Screens/UploadAvatarScreen";
 
+
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { AuthProvider } from "./context/AuthContext"
 
 
 const Stack = createStackNavigator();
 
 export default function App() {
   return (
+    <AuthProvider>
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Welcome">
         <Stack.Screen
@@ -94,7 +97,9 @@ export default function App() {
           component={UpdateAvatar}
           options={{ headerShown: false }}
         />
+       
       </Stack.Navigator>
     </NavigationContainer>
+    </AuthProvider>
   );
 }
