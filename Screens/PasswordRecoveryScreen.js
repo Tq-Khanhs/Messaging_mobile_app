@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client"
+
+import { useState } from "react"
 import {
   View,
   Text,
@@ -7,55 +9,91 @@ import {
   TextInput,
   SafeAreaView,
   StatusBar,
-  Alert
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+  Alert,
+  ActivityIndicator,
+} from "react-native"
+import Icon from "react-native-vector-icons/MaterialIcons"
+import { useAuth } from "../context/AuthContext"
 
 const PasswordRecoveryScreen = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const { requestPasswordReset } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
+  const handleSubmit = async () => {
+    if (!phoneNumber) {
+      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại")
+      return
+    }
 
-  const handleSubmit = () => {
+    // Format phone number
+    let formattedPhoneNumber = phoneNumber
+    if (formattedPhoneNumber.startsWith("0")) {
+      formattedPhoneNumber = "+84" + formattedPhoneNumber.substring(1)
+    } else if (!formattedPhoneNumber.startsWith("+")) {
+      formattedPhoneNumber = "+84" + formattedPhoneNumber
+    }
+
+    // Log the phone number for password reset
+    console.log(`Attempting password reset for: ${formattedPhoneNumber}`)
+
     Alert.alert(
-      `Xác nhận số điện thoại ${phoneNumber}?`,
-      'Số điện thoại này sẽ được sử dụng để nhận mã xác thực',
+      `Xác nhận số điện thoại ${formattedPhoneNumber}?`,
+      "Số điện thoại này sẽ được sử dụng để nhận mã xác thực",
       [
         {
-          text: 'HỦY',
-          style: 'cancel',
+          text: "HỦY",
+          style: "cancel",
         },
         {
-          text: 'XÁC NHẬN',
-          onPress: () => {
-            navigation.navigate('Verification', { phoneNumber });
+          text: "XÁC NHẬN",
+          onPress: async () => {
+            try {
+              setIsLoading(true)
+              setError(null)
+
+              const response = await requestPasswordReset(formattedPhoneNumber)
+
+              // Log successful request
+              console.log(`Password reset verification sent to ${formattedPhoneNumber}`)
+              if (response.verificationCode) {
+                console.log(`Verification code: ${response.verificationCode}`)
+              }
+
+              // Navigate to verification screen with necessary params
+              navigation.navigate("Verification", {
+                phoneNumber: formattedPhoneNumber,
+                sessionInfo: response.sessionInfo,
+                isRegistration: false,
+                isPasswordReset: true,
+              })
+            } catch (err) {
+              const errorMessage = err.message || "Không thể gửi yêu cầu. Vui lòng thử lại sau."
+              setError(errorMessage)
+              Alert.alert("Lỗi", errorMessage)
+            } finally {
+              setIsLoading(false)
+            }
           },
-          style: 'default',
+          style: "default",
         },
       ],
-      { cancelable: false }
-    );
-  };
+      { cancelable: false },
+    )
+  }
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
 
-
-
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Lấy lại mật khẩu</Text>
       </View>
 
-
-      <Text style={styles.instructions}>
-        Nhập số điện thoại để lấy lại mật khẩu
-      </Text>
-
+      <Text style={styles.instructions}>Nhập số điện thoại để lấy lại mật khẩu</Text>
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
@@ -68,62 +106,58 @@ const PasswordRecoveryScreen = ({ navigation }) => {
             keyboardType="phone-pad"
           />
           {phoneNumber.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={() => setPhoneNumber('')}
-            >
+            <TouchableOpacity style={styles.clearButton} onPress={() => setPhoneNumber("")}>
               <Icon name="close" size={20} color="#666666" />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Icon name="arrow-forward" size={24} color="#FFFFFF" />
+      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="arrow-forward" size={24} color="#FFFFFF" />}
       </TouchableOpacity>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B1B1B',
+    backgroundColor: "#1B1B1B",
   },
   statusBarContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   timeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
   },
   statusIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   batteryText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
   },
   backButton: {
     marginRight: 16,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   instructions: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -132,14 +166,14 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 2,
-    borderBottomColor: '#00A7E7',
+    borderBottomColor: "#00A7E7",
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     paddingVertical: 8,
   },
@@ -147,16 +181,16 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   submitButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 32,
     right: 32,
-    backgroundColor: '#00A7E7',
+    backgroundColor: "#00A7E7",
     width: 56,
     height: 56,
     borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-});
+})
 
-export default PasswordRecoveryScreen;
+export default PasswordRecoveryScreen

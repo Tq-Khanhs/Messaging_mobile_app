@@ -13,14 +13,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [verificationData, setVerificationData] = useState(null)
+  const [resetPasswordData, setResetPasswordData] = useState(null)
 
-  // Check if user is logged in on app start
+
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
         const token = authService.getToken()
         if (token) {
-          // Get user profile if token exists
+
           const userData = await userService.getUserProfile()
           setUser(userData.user)
         }
@@ -34,12 +35,20 @@ export const AuthProvider = ({ children }) => {
     checkLoginStatus()
   }, [])
 
-  // Request verification code
+
   const requestVerificationCode = async (phoneNumber) => {
     try {
       setLoading(true)
       setError(null)
       const data = await authService.requestVerificationCode(phoneNumber)
+
+      console.log("==== VERIFICATION CODE REQUEST ====")
+      console.log(`Phone Number: ${phoneNumber}`)
+      console.log(`Verification Code: ${data.verificationCode}`)
+      console.log(`Session Info: ${data.sessionInfo}`)
+      console.log(`Request Time: ${new Date().toISOString()}`)
+      console.log("=================================")
+
       setVerificationData({
         sessionInfo: data.sessionInfo,
         verificationCode: data.verificationCode,
@@ -54,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Verify phone number
+
   const verifyPhoneNumber = async (code) => {
     try {
       if (!verificationData) {
@@ -64,9 +73,16 @@ export const AuthProvider = ({ children }) => {
       setLoading(true)
       setError(null)
 
+
+      console.log("==== VERIFICATION ATTEMPT ====")
+      console.log(`Phone Number: ${verificationData.phoneNumber}`)
+      console.log(`User Entered Code: ${code}`)
+      console.log(`Expected Code: ${verificationData.verificationCode}`)
+      console.log("==============================")
+
       const data = await authService.verifyPhoneNumber(verificationData.sessionInfo, code, verificationData.phoneNumber)
 
-      // Update verification data with firebase UID
+   
       setVerificationData({
         ...verificationData,
         firebaseUid: data.firebaseUid,
@@ -82,7 +98,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Complete registration
+
   const register = async (userData) => {
     try {
       if (!verificationData || !verificationData.firebaseUid) {
@@ -108,7 +124,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Login
+
   const login = async (phoneNumber, password) => {
     try {
       setLoading(true)
@@ -124,16 +140,25 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Request password reset
+
   const requestPasswordReset = async (phoneNumber) => {
     try {
       setLoading(true)
       setError(null)
-      const data = await authService.requestPasswordReset(phoneNumber)
-      setVerificationData({
+      const data = await authService.requestPasswordResetCode(phoneNumber)
+
+      console.log("==== PASSWORD RESET REQUEST ====")
+      console.log(`Phone Number: ${phoneNumber}`)
+      console.log(`Verification Code: ${data.verificationCode}`)
+      console.log(`Session Info: ${data.sessionInfo}`)
+      console.log(`Request Time: ${new Date().toISOString()}`)
+      console.log("===============================")
+
+      setResetPasswordData({
         sessionInfo: data.sessionInfo,
         verificationCode: data.verificationCode,
         phoneNumber: phoneNumber,
+        requestTime: new Date().getTime(), 
       })
       return data
     } catch (err) {
@@ -144,22 +169,60 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Reset password
-  const resetPassword = async (code, newPassword) => {
+  const verifyResetCode = async (code) => {
     try {
-      if (!verificationData) {
-        throw new Error("Verification data not found")
+      if (!resetPasswordData) {
+        throw new Error("Reset password data not found")
       }
 
       setLoading(true)
       setError(null)
 
-      const data = await authService.resetPassword(
-        verificationData.sessionInfo,
-        code,
-        verificationData.phoneNumber,
-        newPassword,
-      )
+      console.log("==== VERIFY RESET CODE ATTEMPT ====")
+      console.log(`Phone Number: ${resetPasswordData.phoneNumber}`)
+      console.log(`User Entered Code: ${code}`)
+      console.log(`Session Info: ${resetPasswordData.sessionInfo}`)
+      console.log("==================================")
+
+      const data = await authService.verifyResetCode(resetPasswordData.sessionInfo, code, resetPasswordData.phoneNumber)
+
+
+      setResetPasswordData({
+        ...resetPasswordData,
+        resetToken: data.resetToken,
+        userId: data.userId,
+        verified: true,
+      })
+
+      return data
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to verify reset code")
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+  const completePasswordReset = async (newPassword) => {
+    try {
+      if (!resetPasswordData || !resetPasswordData.resetToken) {
+        throw new Error("Reset token not found")
+      }
+
+      setLoading(true)
+      setError(null)
+
+
+      console.log("==== COMPLETE PASSWORD RESET ====")
+      console.log(`Reset Token: ${resetPasswordData.resetToken.substring(0, 10)}...`)
+      console.log(`Password Length: ${newPassword.length}`)
+      console.log("=================================")
+
+      const data = await authService.completePasswordReset(resetPasswordData.resetToken, newPassword)
+
+
+      clearResetPasswordData()
 
       return data
     } catch (err) {
@@ -170,7 +233,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Logout
+
   const logout = async () => {
     try {
       setLoading(true)
@@ -183,9 +246,13 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Clear verification data
+
   const clearVerificationData = () => {
     setVerificationData(null)
+  }
+
+  const clearResetPasswordData = () => {
+    setResetPasswordData(null)
   }
 
   return (
@@ -195,14 +262,17 @@ export const AuthProvider = ({ children }) => {
         loading,
         error,
         verificationData,
+        resetPasswordData,
         requestVerificationCode,
         verifyPhoneNumber,
         register,
         login,
         requestPasswordReset,
-        resetPassword,
+        verifyResetCode,
+        completePasswordReset,
         logout,
         clearVerificationData,
+        clearResetPasswordData,
       }}
     >
       {children}
@@ -210,7 +280,7 @@ export const AuthProvider = ({ children }) => {
   )
 }
 
-// Custom hook to use auth context
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -218,4 +288,3 @@ export const useAuth = () => {
   }
   return context
 }
-

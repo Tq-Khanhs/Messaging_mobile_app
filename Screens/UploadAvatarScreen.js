@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import {
   View,
@@ -18,39 +16,32 @@ import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
 import { Camera } from "expo-camera"
 import { useAuth } from "../context/AuthContext"
-import { userService } from "../services/userService"
 import { useRoute } from "@react-navigation/native"
+import * as FileSystem from "expo-file-system"
 
 export default function UpdateProfilePictureScreen({ navigation }) {
   const route = useRoute()
-  const { fullName = "Trần Quốc Khánh", phoneNumber, firebaseUid, password, birthdate, gender } = route.params || {}
+  const { fullName, phoneNumber, firebaseUid, password, birthdate, gender } = route.params || {}
 
   const [profileImage, setProfileImage] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
   const [hasPermission, setHasPermission] = useState(null)
-  const [initials, setInitials] = useState("")
-  const [avatarColor, setAvatarColor] = useState("#C084FC")
 
   const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (fullName) {
-      const nameParts = fullName.split(" ").filter((part) => part.length > 0)
-      if (nameParts.length >= 2) {
-        // Get first letter of first name and first letter of last name
-        const firstInitial = nameParts[0].charAt(0)
-        const lastInitial = nameParts[nameParts.length - 1].charAt(0)
-        setInitials(`${firstInitial}${lastInitial}`)
-      } else if (nameParts.length === 1) {
-        // If only one name, use first two letters
-        setInitials(nameParts[0].substring(0, 2))
-      }
-    }
-  }, [fullName])
+    console.log("UploadAvatarScreen - Route Params:", {
+      fullName,
+      phoneNumber,
+      firebaseUid,
+      password: password ? "***" : undefined,
+      birthdate,
+      gender,
+    })
+  }, [fullName, phoneNumber, firebaseUid, password, birthdate, gender])
 
-  // Request camera permissions
   useEffect(() => {
     ;(async () => {
       const { status } = await Camera.requestCameraPermissionsAsync()
@@ -58,7 +49,6 @@ export default function UpdateProfilePictureScreen({ navigation }) {
     })()
   }, [])
 
-  // Take a new photo
   const takePhoto = async () => {
     setShowOptions(false)
 
@@ -109,26 +99,55 @@ export default function UpdateProfilePictureScreen({ navigation }) {
 
       let avatarUrl = null
 
-      // If user has selected a profile image, upload it
       if (profileImage) {
         try {
-          // Get upload URL
-          const uploadUrlResponse = await userService.getAvatarUploadUrl("image/jpeg")
-          const { uploadUrl, key } = uploadUrlResponse
+          console.log("Starting avatar upload process...")
 
-          // Upload to S3
-          await userService.uploadToS3(uploadUrl, profileImage, "image/jpeg")
+          const formData = new FormData()
 
-          // Confirm upload
-          const confirmResponse = await userService.confirmAvatarUpload(key)
-          avatarUrl = confirmResponse.avatarUrl
+          const uriParts = profileImage.split(".")
+          const fileType = uriParts[uriParts.length - 1]
+          const fileName = `avatar.${fileType}`
+
+          const fileInfo = await FileSystem.getInfoAsync(profileImage)
+          console.log("File info:", fileInfo)
+
+          formData.append("image", {
+            uri: profileImage,
+            name: fileName,
+            type: `image/${fileType}`,
+          })
+
+          console.log("Uploading image to server...")
+
+          const response = await fetch("http://172.19.192.1:5000/api/images/upload", {
+            method: "POST",
+            body: formData,
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          })
+
+          if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(`Upload failed with status: ${response.status}, ${errorText}`)
+          }
+
+          const data = await response.json()
+
+          avatarUrl = data.imageUrl
+          console.log("Image uploaded successfully, URL:", avatarUrl)
+          console.log("Image key:", data.key)
         } catch (err) {
           console.error("Failed to upload avatar:", err)
-          // Continue registration even if avatar upload fails
+          avatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+          Alert.alert("Cảnh báo", "Không thể tải lên ảnh đại diện. Sẽ sử dụng ảnh mặc định.", [{ text: "OK" }])
         }
+      } else {
+        avatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+        console.log("Using default avatar URL:", avatarUrl)
       }
 
-      // Complete registration
       const userData = {
         phoneNumber,
         password,
@@ -139,13 +158,15 @@ export default function UpdateProfilePictureScreen({ navigation }) {
         avatarUrl,
       }
 
+      console.log("Registering user with avatar URL:", avatarUrl)
       await register(userData)
+      console.log("Registration complete")
 
-      // Navigate to messages screen
       navigation.navigate("MessagesScreen")
     } catch (err) {
+      console.error("Profile picture upload/registration error:", err)
       setError(err.message || "Đăng ký không thành công. Vui lòng thử lại.")
-      Alert.alert("Lỗi", error)
+      Alert.alert("Lỗi", err.message || "Đăng ký không thành công. Vui lòng thử lại.")
     } finally {
       setIsLoading(false)
     }
@@ -156,7 +177,9 @@ export default function UpdateProfilePictureScreen({ navigation }) {
       setIsLoading(true)
       setError(null)
 
-      // Complete registration without avatar
+      const defaultAvatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+      console.log("Skipping profile picture, using default URL:", defaultAvatarUrl)
+
       const userData = {
         phoneNumber,
         password,
@@ -164,15 +187,17 @@ export default function UpdateProfilePictureScreen({ navigation }) {
         birthdate,
         gender,
         firebaseUid,
+        avatarUrl: defaultAvatarUrl,
       }
 
       await register(userData)
+      console.log("Registration with default avatar complete")
 
-      // Navigate to messages screen
       navigation.navigate("MessagesScreen")
     } catch (err) {
+      console.error("Registration with default avatar error:", err)
       setError(err.message || "Đăng ký không thành công. Vui lòng thử lại.")
-      Alert.alert("Lỗi", error)
+      Alert.alert("Lỗi", err.message || "Đăng ký không thành công. Vui lòng thử lại.")
     } finally {
       setIsLoading(false)
     }
@@ -190,14 +215,11 @@ export default function UpdateProfilePictureScreen({ navigation }) {
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={styles.profileImage} />
           ) : (
-            <View style={[styles.initialsContainer, { backgroundColor: avatarColor }]}>
-              <Text style={styles.initialsText}>{initials}</Text>
-            </View>
+            <Image source={require("../assets/avt.png")} style={styles.profileImage} />
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Update Button */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.updateButton} onPress={uploadProfilePicture} disabled={isLoading}>
           {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.updateButtonText}>Cập nhật</Text>}
@@ -208,7 +230,6 @@ export default function UpdateProfilePictureScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Photo Options Modal */}
       <Modal
         transparent={true}
         animationType="slide"
@@ -272,17 +293,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  initialsContainer: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  initialsText: {
-    color: "white",
-    fontSize: 48,
-    fontWeight: "bold",
-  },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingBottom: 30,
@@ -342,4 +352,3 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
 })
-

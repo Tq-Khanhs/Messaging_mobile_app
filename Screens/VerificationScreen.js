@@ -1,8 +1,5 @@
-"use client"
-
-import { Alert } from "react-native"
-
-import { useState, useRef } from "react"
+import { useRef } from "react"
+import { useState } from "react"
 import {
   View,
   Text,
@@ -12,16 +9,19 @@ import {
   StatusBar,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
+import { useRoute } from "@react-navigation/native"
 
-const VerificationScreen = ({ navigation, route }) => {
+const VerificationScreen = ({ navigation }) => {
   const [code, setCode] = useState(["", "", "", "", "", ""])
   const inputRefs = useRef([])
 
-  const { verifyPhoneNumber } = useAuth()
-  const { phoneNumber, sessionInfo, isRegistration } = route.params || {}
+  const { verifyPhoneNumber, verifyResetCode } = useAuth()
+  const route = useRoute()
+  const { phoneNumber, sessionInfo, isRegistration, isPasswordReset } = route.params || {}
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -48,23 +48,52 @@ const VerificationScreen = ({ navigation, route }) => {
       return
     }
 
+    // Log verification attempt
+    console.log(`Verifying code: ${verificationCode} for phone: ${phoneNumber}`)
+    console.log(`Is password reset: ${isPasswordReset ? "Yes" : "No"}`)
+
     try {
       setIsLoading(true)
       setError(null)
 
-      const response = await verifyPhoneNumber(verificationCode)
+      if (isPasswordReset) {
+        // Password reset verification flow
+        console.log("Using password reset verification flow")
+        const response = await verifyResetCode(verificationCode)
 
-      if (isRegistration) {
-        navigation.navigate("CreatePasswordScreen", {
-          phoneNumber,
-          firebaseUid: response.firebaseUid,
-        })
+        // Log successful verification
+        console.log("Reset code verification successful!")
+        console.log("Reset token received:", response.resetToken ? "Yes" : "No")
+        console.log("User ID received:", response.userId)
+
+        // Navigate to create new password screen
+        navigation.navigate("CreateNewPassword")
       } else {
-        navigation.navigate("Success")
+        // Registration verification flow
+        console.log("Using registration verification flow")
+        const response = await verifyPhoneNumber(verificationCode)
+
+        // Log successful verification
+        console.log("Verification successful!")
+
+        if (isRegistration) {
+          // Registration flow
+          console.log("Proceeding with registration flow")
+          navigation.navigate("CreatePasswordScreen", {
+            phoneNumber,
+            firebaseUid: response.firebaseUid,
+          })
+        } else {
+          // General verification success
+          console.log("Proceeding to success screen")
+          navigation.navigate("Success")
+        }
       }
     } catch (err) {
-      setError(err.message || "Mã xác thực không đúng. Vui lòng thử lại.")
-      Alert.alert("Lỗi", "Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.")
+      const errorMessage = err.message || "Mã xác thực không đúng. Vui lòng thử lại."
+      setError(errorMessage)
+      console.error("Verification failed:", errorMessage)
+      Alert.alert("Lỗi", errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -230,4 +259,3 @@ const styles = StyleSheet.create({
 })
 
 export default VerificationScreen
-
