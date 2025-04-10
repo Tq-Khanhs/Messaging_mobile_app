@@ -32,7 +32,6 @@ const LoginScreen = ({ navigation }) => {
       setIsLoading(true)
       setError(null)
 
-      // Format phone number
       let formattedPhoneNumber = phoneNumber
       if (formattedPhoneNumber.startsWith("0")) {
         formattedPhoneNumber = "+84" + formattedPhoneNumber.substring(1)
@@ -42,7 +41,6 @@ const LoginScreen = ({ navigation }) => {
 
       const response = await login(formattedPhoneNumber, password)
 
-      // Navigate to messages screen on successful login
       navigation.reset({
         index: 0,
         routes: [{ name: "MessagesScreen" }],

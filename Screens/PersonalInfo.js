@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useRef } from "react"
 import {
   View,
@@ -25,9 +23,9 @@ export default function PersonalInfoScreen({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showGenderPicker, setShowGenderPicker] = useState(false)
 
-  const [selectedDay, setSelectedDay] = useState(28)
-  const [selectedMonth, setSelectedMonth] = useState(4)
-  const [selectedYear, setSelectedYear] = useState(2003)
+  const [selectedDay, setSelectedDay] = useState(1)
+  const [selectedMonth, setSelectedMonth] = useState(1)
+  const [selectedYear, setSelectedYear] = useState(2025)
 
   const dayScrollRef = useRef(null)
   const monthScrollRef = useRef(null)
@@ -58,7 +56,6 @@ export default function PersonalInfoScreen({ navigation }) {
       setIsLoading(true)
       setError(null)
 
-      // Navigate to upload avatar with all registration data
       navigation.navigate("UploadAvt", {
         phoneNumber,
         firebaseUid,
@@ -95,9 +92,24 @@ export default function PersonalInfoScreen({ navigation }) {
   }
 
   const confirmDate = () => {
+    const birthDate = new Date(`${selectedYear}-${selectedMonth}-${selectedDay}`)
+    const today = new Date()
+  
+    const age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    const dayDiff = today.getDate() - birthDate.getDate()
+  
+    const isOver16 = age > 16 || (age === 16 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)))
+  
+    if (!isOver16) {
+      alert("Bạn phải trên 16 tuổi")
+      return
+    }
+  
     setBirthday(`${selectedDay}/${selectedMonth}/${selectedYear}`)
     setShowDatePicker(false)
   }
+  
 
   const handleDayScroll = (event) => {
     const offsetY = event.nativeEvent.contentOffset.y

@@ -6,12 +6,10 @@ const SuccessScreen = ({ navigation }) => {
   const route = useRoute()
   const { phoneNumber, sessionInfo, verificationCode, isPasswordReset } = route.params || {}
 
-  // Determine if this is a password reset flow
   const isResetFlow = isPasswordReset === true
 
   const handleSubmit = () => {
     if (isResetFlow) {
-      // For password reset flow
       Alert.alert(
         `Xác nhận`,
         "Bạn cần tạo mật khẩu mới để đảm bảo an toàn cho tài khoản",
@@ -41,7 +39,6 @@ const SuccessScreen = ({ navigation }) => {
         { cancelable: false },
       )
     } else {
-      // For regular success flow
       Alert.alert(
         `Xác nhận`,
         "Chú ý: Bạn sẽ không thể đăng nhập ở 1 số thiết bị khác nếu chưa tạo mật khẩu. Chọn Để sau, bạn sẽ phải tạo mật khẩu khi đăng xuất tài khoản",

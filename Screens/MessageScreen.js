@@ -142,7 +142,6 @@ const MessagesScreen = ({ navigation }) => {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
       />
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navItem, styles.activeNavItem]} >
           <Ionicons name="chatbubble-outline" size={24} color="#0068FF" />

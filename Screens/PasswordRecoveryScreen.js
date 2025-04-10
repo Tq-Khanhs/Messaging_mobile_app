@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import {
   View,
@@ -27,7 +25,6 @@ const PasswordRecoveryScreen = ({ navigation }) => {
       return
     }
 
-    // Format phone number
     let formattedPhoneNumber = phoneNumber
     if (formattedPhoneNumber.startsWith("0")) {
       formattedPhoneNumber = "+84" + formattedPhoneNumber.substring(1)
@@ -35,7 +32,6 @@ const PasswordRecoveryScreen = ({ navigation }) => {
       formattedPhoneNumber = "+84" + formattedPhoneNumber
     }
 
-    // Log the phone number for password reset
     console.log(`Attempting password reset for: ${formattedPhoneNumber}`)
 
     Alert.alert(
@@ -55,13 +51,11 @@ const PasswordRecoveryScreen = ({ navigation }) => {
 
               const response = await requestPasswordReset(formattedPhoneNumber)
 
-              // Log successful request
               console.log(`Password reset verification sent to ${formattedPhoneNumber}`)
               if (response.verificationCode) {
                 console.log(`Verification code: ${response.verificationCode}`)
               }
 
-              // Navigate to verification screen with necessary params
               navigation.navigate("Verification", {
                 phoneNumber: formattedPhoneNumber,
                 sessionInfo: response.sessionInfo,

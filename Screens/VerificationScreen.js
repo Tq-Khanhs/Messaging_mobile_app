@@ -48,7 +48,6 @@ const VerificationScreen = ({ navigation }) => {
       return
     }
 
-    // Log verification attempt
     console.log(`Verifying code: ${verificationCode} for phone: ${phoneNumber}`)
     console.log(`Is password reset: ${isPasswordReset ? "Yes" : "No"}`)
 
@@ -57,34 +56,25 @@ const VerificationScreen = ({ navigation }) => {
       setError(null)
 
       if (isPasswordReset) {
-        // Password reset verification flow
         console.log("Using password reset verification flow")
         const response = await verifyResetCode(verificationCode)
-
-        // Log successful verification
         console.log("Reset code verification successful!")
         console.log("Reset token received:", response.resetToken ? "Yes" : "No")
         console.log("User ID received:", response.userId)
-
-        // Navigate to create new password screen
         navigation.navigate("CreateNewPassword")
       } else {
-        // Registration verification flow
         console.log("Using registration verification flow")
         const response = await verifyPhoneNumber(verificationCode)
 
-        // Log successful verification
         console.log("Verification successful!")
 
         if (isRegistration) {
-          // Registration flow
           console.log("Proceeding with registration flow")
           navigation.navigate("CreatePasswordScreen", {
             phoneNumber,
             firebaseUid: response.firebaseUid,
           })
         } else {
-          // General verification success
           console.log("Proceeding to success screen")
           navigation.navigate("Success")
         }

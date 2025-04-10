@@ -140,11 +140,11 @@ export default function UpdateProfilePictureScreen({ navigation }) {
           console.log("Image key:", data.key)
         } catch (err) {
           console.error("Failed to upload avatar:", err)
-          avatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+          avatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
           Alert.alert("Cảnh báo", "Không thể tải lên ảnh đại diện. Sẽ sử dụng ảnh mặc định.", [{ text: "OK" }])
         }
       } else {
-        avatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+        avatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
         console.log("Using default avatar URL:", avatarUrl)
       }
 
@@ -177,7 +177,7 @@ export default function UpdateProfilePictureScreen({ navigation }) {
       setIsLoading(true)
       setError(null)
 
-      const defaultAvatarUrl = "https://zalo-user-avatars.s3.ap-southeast-1.amazonaws.com/avt.png"
+      const defaultAvatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
       console.log("Skipping profile picture, using default URL:", defaultAvatarUrl)
 
       const userData = {

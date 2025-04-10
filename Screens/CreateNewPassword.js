@@ -27,7 +27,6 @@ const CreatePasswordScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Log the received parameters
   useEffect(() => {
     console.log("CreateNewPassword screen loaded")
     console.log("Reset password data:", resetPasswordData ? "Available" : "Not available")
@@ -48,7 +47,6 @@ const CreatePasswordScreen = ({ navigation }) => {
       return
     }
 
-    // Check if reset token is available
     if (!resetPasswordData || !resetPasswordData.resetToken) {
       Alert.alert("Lỗi", "Không tìm thấy mã xác thực. Vui lòng thực hiện lại quá trình lấy lại mật khẩu.", [
         {
@@ -63,20 +61,19 @@ const CreatePasswordScreen = ({ navigation }) => {
       setIsLoading(true)
       setError(null)
 
-      // Log password reset attempt
+
       console.log("Attempting to complete password reset")
       console.log(`Reset token: ${resetPasswordData.resetToken.substring(0, 10)}...`)
 
       await completePasswordReset(password)
 
-      // Log successful password reset
+
       console.log("Password successfully reset")
 
       Alert.alert("Thành công", "Mật khẩu đã được cập nhật thành công", [
         {
           text: "OK",
           onPress: () => {
-            // Reset navigation to login screen
             navigation.reset({
               index: 0,
               routes: [{ name: "Login" }],
@@ -94,7 +91,6 @@ const CreatePasswordScreen = ({ navigation }) => {
     }
   }
 
-  // Toggle debug mode with 5 taps on the header
   const [tapCount, setTapCount] = useState(0)
   const handleHeaderTap = () => {
     const newCount = tapCount + 1
