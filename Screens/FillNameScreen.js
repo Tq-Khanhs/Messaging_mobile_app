@@ -41,8 +41,6 @@ export default function EnterZaloNameScreen({ navigation }) {
     try {
       setIsLoading(true)
       setError(null)
-
-      // Store the name for later use in registration
       navigation.navigate("PersonalInfo", {
         phoneNumber,
         firebaseUid,

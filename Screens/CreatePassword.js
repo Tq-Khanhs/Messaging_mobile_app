@@ -29,14 +29,12 @@ export default function CreatePasswordScreen({ navigation }) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState(null)
 
-    // Validate password
+ 
     useEffect(() => {
-        // Check if password contains both letters and numbers
         const hasLettersAndNumbers = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(newPassword)
         setIsPasswordValid(hasLettersAndNumbers && newPassword.length >= 8)
     }, [newPassword])
 
-    // Validate confirm password
     useEffect(() => {
         setIsConfirmValid(confirmPassword === newPassword && newPassword !== "")
     }, [confirmPassword, newPassword])
@@ -49,8 +47,6 @@ export default function CreatePasswordScreen({ navigation }) {
         try {
             setIsLoading(true)
             setError(null)
-
-            // Store the password for later use in registration
             navigation.navigate("FillName", {
                 phoneNumber,
                 firebaseUid,
@@ -68,7 +64,6 @@ export default function CreatePasswordScreen({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={24} color="white" />
@@ -76,12 +71,10 @@ export default function CreatePasswordScreen({ navigation }) {
                 <Text style={styles.headerTitle}>Tạo mật khẩu</Text>
             </View>
 
-            {/* Instructions */}
             <View style={styles.instructionContainer}>
                 <Text style={styles.instructionText}>Mật khẩu phải gồm chữ và số.</Text>
             </View>
 
-            {/* Password Fields */}
             <View style={styles.formContainer}>
                 <View style={styles.inputRow}>
                     <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword(!showPassword)}>
@@ -130,7 +123,6 @@ export default function CreatePasswordScreen({ navigation }) {
                 <View style={styles.divider} />
             </View>
 
-            {/* Update Button */}
             <TouchableOpacity
                 style={[
                     styles.updateButton,

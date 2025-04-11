@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import {
   View,
@@ -55,30 +53,21 @@ const SignUpScreen = ({ navigation, route }) => {
       return
     }
 
-    // Validate phone number
     if (!phoneNumber || phoneNumber.trim() === "") {
       Alert.alert("Lỗi", "Vui lòng nhập số điện thoại")
       return
     }
 
-    // Format phone number with the selected country code
     let formattedPhoneNumber = phoneNumber
 
-    // Remove leading 0 if present
     if (formattedPhoneNumber.startsWith("0")) {
       formattedPhoneNumber = formattedPhoneNumber.substring(1)
     }
-
-    // Add country code
     formattedPhoneNumber = `${countryCode}${formattedPhoneNumber}`
 
     try {
       setIsLoading(true)
-
-      // Call API to request verification code
       await requestVerificationCode(formattedPhoneNumber)
-
-      // Navigate to verification screen
       navigation.navigate("Verification", {
         phoneNumber: formattedPhoneNumber,
         isRegistration: true,
