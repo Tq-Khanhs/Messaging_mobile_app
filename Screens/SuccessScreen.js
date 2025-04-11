@@ -4,7 +4,7 @@ import { useRoute } from "@react-navigation/native"
 
 const SuccessScreen = ({ navigation }) => {
   const route = useRoute()
-  const { phoneNumber, sessionInfo, verificationCode, isPasswordReset } = route.params || {}
+  const { email, sessionInfo, verificationCode, isPasswordReset } = route.params || {}
 
   const isResetFlow = isPasswordReset === true
 
@@ -28,7 +28,7 @@ const SuccessScreen = ({ navigation }) => {
             text: "Tạo mật khẩu",
             onPress: () => {
               navigation.navigate("CreateNewPassword", {
-                phoneNumber,
+                email,
                 sessionInfo,
                 code: verificationCode,
               })
@@ -90,7 +90,7 @@ const SuccessScreen = ({ navigation }) => {
             if (isResetFlow) {
               console.log(`Passing verification code from Success to CreateNewPassword: ${verificationCode}`)
               navigation.navigate("CreateNewPassword", {
-                phoneNumber,
+                email,
                 sessionInfo,
                 code: verificationCode,
               })

@@ -1,7 +1,6 @@
 import WelcomeScreen from "./Screens/WelcomeScreen";
 import LoginScreen from "./Screens/LoginScreen";
 import SignUpScreen from "./Screens/SignUpScreen";
-import CountryPicker from "./components/CountryPicker";
 import PasswordRecoveryScreen from "./Screens/PasswordRecoveryScreen";
 import VerificationScreen from "./Screens/VerificationScreen";
 import SuccessScreen from "./Screens/SuccessScreen";
@@ -42,11 +41,7 @@ export default function App() {
           component={SignUpScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="CountryPicker"
-          component={CountryPicker}
-          options={{ headerShown: false }}
-        />
+        
         <Stack.Screen
           name="PasswordRecovery"
           component={PasswordRecoveryScreen}

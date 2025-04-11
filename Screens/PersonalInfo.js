@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef } from "react"
 import {
   View,
@@ -43,7 +45,8 @@ export default function PersonalInfoScreen({ navigation }) {
   ]
 
   const route = useRoute()
-  const { phoneNumber, firebaseUid, password, fullName } = route.params || {}
+  const { email, userId, password, fullName } = route.params || {}
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -57,8 +60,8 @@ export default function PersonalInfoScreen({ navigation }) {
       setError(null)
 
       navigation.navigate("UploadAvt", {
-        phoneNumber,
-        firebaseUid,
+        email,
+        userId,
         password,
         fullName,
         birthdate: birthday,
@@ -94,22 +97,21 @@ export default function PersonalInfoScreen({ navigation }) {
   const confirmDate = () => {
     const birthDate = new Date(`${selectedYear}-${selectedMonth}-${selectedDay}`)
     const today = new Date()
-  
+
     const age = today.getFullYear() - birthDate.getFullYear()
     const monthDiff = today.getMonth() - birthDate.getMonth()
     const dayDiff = today.getDate() - birthDate.getDate()
-  
+
     const isOver16 = age > 16 || (age === 16 && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)))
-  
+
     if (!isOver16) {
       alert("Bạn phải trên 16 tuổi")
       return
     }
-  
+
     setBirthday(`${selectedDay}/${selectedMonth}/${selectedYear}`)
     setShowDatePicker(false)
   }
-  
 
   const handleDayScroll = (event) => {
     const offsetY = event.nativeEvent.contentOffset.y
@@ -478,4 +480,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 })
-

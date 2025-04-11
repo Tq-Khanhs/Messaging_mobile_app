@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   View,
   Text,
@@ -10,66 +10,61 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
 
 const { width } = Dimensions.get("window")
 
+// Fallback implementation for useAuth
+const useAuthFallback = () => {
+  return {
+    requestVerificationCode: async () => {
+      console.warn("Fallback: requestVerificationCode called")
+      return Promise.resolve()
+    },
+    error: null,
+  }
+}
 
 const SignUpScreen = ({ navigation, route }) => {
-  const [phoneNumber, setPhoneNumber] = useState("")
+  const [email, setEmail] = useState("")
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [socialTermsAccepted, setSocialTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-
-  const [countryCode, setCountryCode] = useState("+84")
-  const [countryName, setCountryName] = useState("Vietnam")
-
- 
-  useEffect(() => {
-    if (route.params?.countryCode) {
-      setCountryCode(route.params.countryCode)
-    }
-    if (route.params?.countryName) {
-      setCountryName(route.params.countryName)
-    }
-  }, [route.params])
-
- 
-  let auth
-  try {
-    auth = useAuth()
-  } catch (e) {
-    console.warn("AuthProvider not found, using fallback implementation")
-    auth = useAuthFallback()
-  }
+  const auth = useAuth() || useAuthFallback()
 
   const { requestVerificationCode, error } = auth
 
+  const validateEmail = (email) => {
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    return re.test(String(email).toLowerCase())
+  }
+
+  // Update the handleContinue function to use email
   const handleContinue = async () => {
     if (!termsAccepted || !socialTermsAccepted) {
       return
     }
 
-    if (!phoneNumber || phoneNumber.trim() === "") {
-      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại")
+    if (!email || email.trim() === "") {
+      Alert.alert("Lỗi", "Vui lòng nhập email")
       return
     }
 
-    let formattedPhoneNumber = phoneNumber
-
-    if (formattedPhoneNumber.startsWith("0")) {
-      formattedPhoneNumber = formattedPhoneNumber.substring(1)
+    if (!validateEmail(email)) {
+      Alert.alert("Lỗi", "Email không hợp lệ")
+      return
     }
-    formattedPhoneNumber = `${countryCode}${formattedPhoneNumber}`
 
     try {
       setIsLoading(true)
-      await requestVerificationCode(formattedPhoneNumber)
+      await requestVerificationCode(email)
       navigation.navigate("Verification", {
-        phoneNumber: formattedPhoneNumber,
+        email: email,
         isRegistration: true,
       })
     } catch (err) {
@@ -80,6 +75,7 @@ const SignUpScreen = ({ navigation, route }) => {
   }
 
   return (
+    
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
@@ -87,23 +83,18 @@ const SignUpScreen = ({ navigation, route }) => {
         <Icon name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Nhập số điện thoại</Text>
+      {/* Update the title and input field */}
+      <Text style={styles.title}>Nhập email</Text>
 
       <View style={styles.inputContainer}>
-        <TouchableOpacity
-          style={styles.countryCodeButton}
-          onPress={() => navigation.navigate("CountryPicker", { currentCode: countryCode })}
-        >
-          <Text style={styles.countryCodeText}>{countryCode}</Text>
-          <Icon name="keyboard-arrow-down" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
         <TextInput
           style={styles.input}
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
           placeholderTextColor="#666666"
-          placeholder="Nhập số điện thoại"
+          placeholder="Nhập email"
         />
       </View>
 
@@ -241,12 +232,13 @@ const styles = StyleSheet.create({
   },
   loginContainer: {
     position: "absolute",
-    bottom: 40,
+    bottom: 0,
     left: 0,
     right: 0,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 70
   },
   loginText: {
     color: "#FFFFFF",
@@ -259,4 +251,3 @@ const styles = StyleSheet.create({
 })
 
 export default SignUpScreen
-

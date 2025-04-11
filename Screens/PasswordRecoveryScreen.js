@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import {
   View,
@@ -14,29 +16,29 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
 
 const PasswordRecoveryScreen = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState("")
+  // Update the state variable from phoneNumber to email
+  const [email, setEmail] = useState("")
   const { requestPasswordReset } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Update the handleSubmit function to use email
   const handleSubmit = async () => {
-    if (!phoneNumber) {
-      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại")
+    if (!email) {
+      Alert.alert("Lỗi", "Vui lòng nhập email")
       return
     }
 
-    let formattedPhoneNumber = phoneNumber
-    if (formattedPhoneNumber.startsWith("0")) {
-      formattedPhoneNumber = "+84" + formattedPhoneNumber.substring(1)
-    } else if (!formattedPhoneNumber.startsWith("+")) {
-      formattedPhoneNumber = "+84" + formattedPhoneNumber
+    if (!validateEmail(email)) {
+      Alert.alert("Lỗi", "Email không hợp lệ")
+      return
     }
 
-    console.log(`Attempting password reset for: ${formattedPhoneNumber}`)
+    console.log(`Attempting password reset for: ${email}`)
 
     Alert.alert(
-      `Xác nhận số điện thoại ${formattedPhoneNumber}?`,
-      "Số điện thoại này sẽ được sử dụng để nhận mã xác thực",
+      `Xác nhận email ${email}?`,
+      "Email này sẽ được sử dụng để nhận mã xác thực",
       [
         {
           text: "HỦY",
@@ -49,15 +51,15 @@ const PasswordRecoveryScreen = ({ navigation }) => {
               setIsLoading(true)
               setError(null)
 
-              const response = await requestPasswordReset(formattedPhoneNumber)
+              const response = await requestPasswordReset(email)
 
-              console.log(`Password reset verification sent to ${formattedPhoneNumber}`)
+              console.log(`Password reset verification sent to ${email}`)
               if (response.verificationCode) {
                 console.log(`Verification code: ${response.verificationCode}`)
               }
 
               navigation.navigate("Verification", {
-                phoneNumber: formattedPhoneNumber,
+                email: email,
                 sessionInfo: response.sessionInfo,
                 isRegistration: false,
                 isPasswordReset: true,
@@ -76,6 +78,14 @@ const PasswordRecoveryScreen = ({ navigation }) => {
       { cancelable: false },
     )
   }
+
+  // Add email validation function
+  const validateEmail = (email) => {
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    return re.test(String(email).toLowerCase())
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1B1B1B" />
@@ -87,20 +97,23 @@ const PasswordRecoveryScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Lấy lại mật khẩu</Text>
       </View>
 
-      <Text style={styles.instructions}>Nhập số điện thoại để lấy lại mật khẩu</Text>
+      {/* Update the instructions text */}
+      <Text style={styles.instructions}>Nhập email để lấy lại mật khẩu</Text>
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
+          {/* Update the TextInput for email */}
           <TextInput
             style={styles.input}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            placeholder=""
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
             placeholderTextColor="#666666"
-            keyboardType="phone-pad"
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
-          {phoneNumber.length > 0 && (
-            <TouchableOpacity style={styles.clearButton} onPress={() => setPhoneNumber("")}>
+          {email.length > 0 && (
+            <TouchableOpacity style={styles.clearButton} onPress={() => setEmail("")}>
               <Icon name="close" size={20} color="#666666" />
             </TouchableOpacity>
           )}

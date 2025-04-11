@@ -6,14 +6,16 @@ let authToken = null
 // Auth API services
 export const authService = {
   // Request verification code
-  requestVerificationCode: async (phoneNumber) => {
+  requestVerificationCode: async (email) => {
     try {
-      console.log(`Requesting verification code for: ${phoneNumber}`)
-      const response = await api.post("/auth/request-verification", { phoneNumber })
+      console.log(`Requesting verification code for: ${email}`)
+      const response = await api.post("/auth/request-verification", {
+        email,
+      })
 
       // For development/testing: Log the verification code
       if (response.data && response.data.verificationCode) {
-        console.log(`[DEV] Verification code for ${phoneNumber}: ${response.data.verificationCode}`)
+        console.log(`[DEV] Verification code for ${email}: ${response.data.verificationCode}`)
       }
 
       return response.data
@@ -23,17 +25,17 @@ export const authService = {
     }
   },
 
-  // Verify phone number
-  verifyPhoneNumber: async (sessionInfo, code, phoneNumber) => {
+  // Verify email
+  verifyEmail: async (sessionInfo, code, email) => {
     try {
-      const response = await api.post("/auth/verify-phone", {
+      const response = await api.post("/auth/verify-email", {
         sessionInfo,
         code,
-        phoneNumber,
+        email,
       })
       return response.data
     } catch (error) {
-      console.error("Verify phone number error:", error)
+      console.error("Verify email error:", error)
       throw error
     }
   },
@@ -43,11 +45,11 @@ export const authService = {
     try {
       // Log the userData being sent to the API
       console.log("Completing registration with data:", {
-        phoneNumber: userData.phoneNumber,
+        email: userData.email,
         fullName: userData.fullName,
         birthdate: userData.birthdate,
         gender: userData.gender,
-        firebaseUid: userData.firebaseUid,
+        userId: userData.userId,
         hasAvatar: !!userData.avatarUrl,
         avatarUrl: userData.avatarUrl,
       })
@@ -75,9 +77,12 @@ export const authService = {
   },
 
   // Login
-  login: async (phoneNumber, password) => {
+  login: async (email, password) => {
     try {
-      const response = await api.post("/auth/login", { phoneNumber, password })
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+      })
 
       // Store token in memory
       if (response.data.token) {
@@ -92,14 +97,16 @@ export const authService = {
   },
 
   // STEP 1: Request password reset code
-  requestPasswordResetCode: async (phoneNumber) => {
+  requestPasswordResetCode: async (email) => {
     try {
-      console.log(`Requesting password reset code for: ${phoneNumber}`)
-      const response = await api.post("/auth/request-password-reset-code", { phoneNumber })
+      console.log(`Requesting password reset code for: ${email}`)
+      const response = await api.post("/auth/request-password-reset-code", {
+        email,
+      })
 
       // For development/testing: Log the verification code
       if (response.data && response.data.verificationCode) {
-        console.log(`[DEV] Password reset code for ${phoneNumber}: ${response.data.verificationCode}`)
+        console.log(`[DEV] Password reset code for ${email}: ${response.data.verificationCode}`)
       }
 
       return response.data
@@ -110,18 +117,18 @@ export const authService = {
   },
 
   // STEP 2: Verify reset code
-  verifyResetCode: async (sessionInfo, code, phoneNumber) => {
+  verifyResetCode: async (sessionInfo, code, email) => {
     try {
       console.log("Verifying password reset code:", {
         sessionInfo,
         code,
-        phoneNumber,
+        email,
       })
 
       const response = await api.post("/auth/verify-reset-code", {
         sessionInfo: String(sessionInfo),
         code: String(code),
-        phoneNumber: String(phoneNumber),
+        email: String(email),
       })
 
       console.log("Verify reset code response:", response.status, response.data)

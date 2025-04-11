@@ -19,7 +19,8 @@ export default function EnterZaloNameScreen({ navigation }) {
   const [name, setName] = useState("")
   const [isValid, setIsValid] = useState(false)
   const route = useRoute()
-  const { phoneNumber, firebaseUid, password } = route.params || {}
+  // Update the route params to use email instead of phoneNumber
+  const { email, userId, password } = route.params || {}
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -33,6 +34,7 @@ export default function EnterZaloNameScreen({ navigation }) {
     setName(text)
   }
 
+  // Update the handleContinue function to use email
   const handleContinue = async () => {
     if (!isValid) {
       return
@@ -42,8 +44,8 @@ export default function EnterZaloNameScreen({ navigation }) {
       setIsLoading(true)
       setError(null)
       navigation.navigate("PersonalInfo", {
-        phoneNumber,
-        firebaseUid,
+        email,
+        userId,
         password,
         fullName: name,
       })
@@ -207,4 +209,3 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
 })
-

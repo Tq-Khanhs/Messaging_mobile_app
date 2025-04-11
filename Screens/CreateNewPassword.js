@@ -61,12 +61,10 @@ const CreatePasswordScreen = ({ navigation }) => {
       setIsLoading(true)
       setError(null)
 
-
       console.log("Attempting to complete password reset")
       console.log(`Reset token: ${resetPasswordData.resetToken.substring(0, 10)}...`)
 
       await completePasswordReset(password)
-
 
       console.log("Password successfully reset")
 
@@ -172,8 +170,8 @@ const CreatePasswordScreen = ({ navigation }) => {
               {resetPasswordData && (
                 <>
                   <View style={styles.debugInfo}>
-                    <Text style={styles.debugLabel}>Phone:</Text>
-                    <Text style={styles.debugValue}>{resetPasswordData.phoneNumber}</Text>
+                    <Text style={styles.debugLabel}>Email:</Text>
+                    <Text style={styles.debugValue}>{resetPasswordData.email}</Text>
                   </View>
 
                   <View style={styles.debugInfo}>

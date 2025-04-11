@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import {
   View,
@@ -14,7 +16,7 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
 
 const LoginScreen = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
 
@@ -23,8 +25,8 @@ const LoginScreen = ({ navigation }) => {
   const [error, setError] = useState(null)
 
   const handleLogin = async () => {
-    if (!phoneNumber || !password) {
-      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại và mật khẩu")
+    if (!email || !password) {
+      Alert.alert("Lỗi", "Vui lòng nhập email và mật khẩu")
       return
     }
 
@@ -32,23 +34,16 @@ const LoginScreen = ({ navigation }) => {
       setIsLoading(true)
       setError(null)
 
-      let formattedPhoneNumber = phoneNumber
-      if (formattedPhoneNumber.startsWith("0")) {
-        formattedPhoneNumber = "+84" + formattedPhoneNumber.substring(1)
-      } else if (!formattedPhoneNumber.startsWith("+")) {
-        formattedPhoneNumber = "+84" + formattedPhoneNumber
-      }
-
-      const response = await login(formattedPhoneNumber, password)
+      const response = await login(email, password)
 
       navigation.reset({
         index: 0,
         routes: [{ name: "MessagesScreen" }],
       })
     } catch (err) {
-      const errorMessage = err.message || "Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin."
+      const errorMessage = err.message || "Sai tên tên tài khoản hoặc mật khẩu"
       setError(errorMessage)
-      Alert.alert("Lỗi", "Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin.")
+      Alert.alert("Đăng nhập thất bại", "Sai tên tên tài khoản hoặc mật khẩu")
     } finally {
       setIsLoading(false)
     }
@@ -71,14 +66,15 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            placeholder="Số điện thoại"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
             placeholderTextColor="#666666"
-            keyboardType="phone-pad"
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
-          {phoneNumber.length > 0 && (
-            <TouchableOpacity style={styles.clearButton} onPress={() => setPhoneNumber("")}>
+          {email.length > 0 && (
+            <TouchableOpacity style={styles.clearButton} onPress={() => setEmail("")}>
               <Icon name="close" size={20} color="#666666" />
             </TouchableOpacity>
           )}

@@ -19,9 +19,9 @@ const VerificationScreen = ({ navigation }) => {
   const [code, setCode] = useState(["", "", "", "", "", ""])
   const inputRefs = useRef([])
 
-  const { verifyPhoneNumber, verifyResetCode } = useAuth()
+  const { verifyEmail, verifyResetCode } = useAuth()
   const route = useRoute()
-  const { phoneNumber, sessionInfo, isRegistration, isPasswordReset } = route.params || {}
+  const { email, sessionInfo, isRegistration, isPasswordReset } = route.params || {}
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -48,7 +48,7 @@ const VerificationScreen = ({ navigation }) => {
       return
     }
 
-    console.log(`Verifying code: ${verificationCode} for phone: ${phoneNumber}`)
+    console.log(`Verifying code: ${verificationCode} for email: ${email}`)
     console.log(`Is password reset: ${isPasswordReset ? "Yes" : "No"}`)
 
     try {
@@ -64,15 +64,15 @@ const VerificationScreen = ({ navigation }) => {
         navigation.navigate("CreateNewPassword")
       } else {
         console.log("Using registration verification flow")
-        const response = await verifyPhoneNumber(verificationCode)
+        const response = await verifyEmail(verificationCode)
 
         console.log("Verification successful!")
 
         if (isRegistration) {
           console.log("Proceeding with registration flow")
           navigation.navigate("CreatePasswordScreen", {
-            phoneNumber,
-            firebaseUid: response.firebaseUid,
+            email,
+            userId: response.userId,
           })
         } else {
           console.log("Proceeding to success screen")
@@ -108,7 +108,7 @@ const VerificationScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <Text style={styles.phoneNumber}>{phoneNumber || "(+84) 565 970 622"}</Text>
+      <Text style={styles.phoneNumber}>{email || "example@email.com"}</Text>
 
       <Text style={styles.instructions}>Soạn tin nhắn nhận mã xác thực và điền vào bên dưới</Text>
 

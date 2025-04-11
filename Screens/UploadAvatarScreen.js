@@ -21,7 +21,7 @@ import * as FileSystem from "expo-file-system"
 
 export default function UpdateProfilePictureScreen({ navigation }) {
   const route = useRoute()
-  const { fullName, phoneNumber, firebaseUid, password, birthdate, gender } = route.params || {}
+  const { fullName, email, userId, password, birthdate, gender } = route.params || {}
 
   const [profileImage, setProfileImage] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
@@ -34,13 +34,13 @@ export default function UpdateProfilePictureScreen({ navigation }) {
   useEffect(() => {
     console.log("UploadAvatarScreen - Route Params:", {
       fullName,
-      phoneNumber,
-      firebaseUid,
+      email,
+      userId,
       password: password ? "***" : undefined,
       birthdate,
       gender,
     })
-  }, [fullName, phoneNumber, firebaseUid, password, birthdate, gender])
+  }, [fullName, email, userId, password, birthdate, gender])
 
   useEffect(() => {
     ;(async () => {
@@ -140,21 +140,23 @@ export default function UpdateProfilePictureScreen({ navigation }) {
           console.log("Image key:", data.key)
         } catch (err) {
           console.error("Failed to upload avatar:", err)
-          avatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
+          avatarUrl =
+            "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
           Alert.alert("Cảnh báo", "Không thể tải lên ảnh đại diện. Sẽ sử dụng ảnh mặc định.", [{ text: "OK" }])
         }
       } else {
-        avatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
+        avatarUrl =
+          "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
         console.log("Using default avatar URL:", avatarUrl)
       }
 
       const userData = {
-        phoneNumber,
+        email,
         password,
         fullName,
         birthdate,
         gender,
-        firebaseUid,
+        userId,
         avatarUrl,
       }
 
@@ -177,16 +179,17 @@ export default function UpdateProfilePictureScreen({ navigation }) {
       setIsLoading(true)
       setError(null)
 
-      const defaultAvatarUrl = "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
+      const defaultAvatarUrl =
+        "https://ozagioltbnrtpewkouxs.supabase.co/storage/v1/object/public/images/images/2fddee0f-39f4-472d-9e89-5aa0099fae84.png"
       console.log("Skipping profile picture, using default URL:", defaultAvatarUrl)
 
       const userData = {
-        phoneNumber,
+        email,
         password,
         fullName,
         birthdate,
         gender,
-        firebaseUid,
+        userId,
         avatarUrl: defaultAvatarUrl,
       }
 

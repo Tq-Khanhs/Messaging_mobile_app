@@ -47,17 +47,7 @@ const WelcomeScreen = ({ navigation }) => {
 
 
 
-      <View style={styles.paginationContainer}>
-        {[0, 1, 2, 3, 4].map((index) => (
-          <View
-            key={index}
-            style={[
-              styles.paginationDot,
-              index === 4 && styles.paginationDotActive,
-            ]}
-          />
-        ))}
-      </View>
+      
 
 
       <View style={styles.buttonContainer}>
