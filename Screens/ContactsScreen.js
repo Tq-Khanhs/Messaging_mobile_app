@@ -301,12 +301,12 @@ const ContactsScreen = ({ navigation }) => {
           <Ionicons name="people" size={24} color="#0068FF" />
           <Text style={styles.activeNavText}>Danh bạ</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="time-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person-outline" size={24} color="#888" />
-        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("HistoryScreen")}>
+                  <Ionicons name="time-outline" size={24} color="#888" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen")}>
+                  <Ionicons name="person-outline" size={24} color="#888" />
+                </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

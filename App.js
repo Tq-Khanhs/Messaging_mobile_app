@@ -12,7 +12,9 @@ import CreatePasswordScreen from "./Screens/CreatePassword";
 import FillName from "./Screens/FillNameScreen";
 import PersonalInfoScreen from "./Screens/PersonalInfo";
 import UpdateAvatar from "./Screens/UploadAvatarScreen";
-
+import ProfileScreen from "./Screens/ProfileScreen";
+import EditProfileScreen from "./Screens/EditProfileScreen";
+import HistoryScreen from "./Screens/HistoryScreen";
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -97,8 +99,22 @@ export default function App() {
           component={UpdateAvatar}
           options={{ headerShown: false }}
         />
+        <Stack.Screen name="ProfileScreen" 
+        component={ProfileScreen} 
+        options={{headerShown: false}}/>
        
+      <Stack.Screen name="HistoryScreen" 
+        component={HistoryScreen} 
+        options={{headerShown: false}}/>
+      <Stack.Screen
+        name="EditProfileScreen"
+        component={EditProfileScreen}
+        options={{ headerShown: false }}
+      />
+
+
       </Stack.Navigator>
+       
     </NavigationContainer>
     </AuthProvider>
   );
