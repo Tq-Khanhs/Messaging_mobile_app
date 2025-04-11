@@ -151,10 +151,10 @@ const MessagesScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
           <Ionicons name="people" size={24} color="#888" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("HistoryScreen")}>
           <Ionicons name="time-outline" size={24} color="#888" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen")}>
           <Ionicons name="person-outline" size={24} color="#888" />
         </TouchableOpacity>
       </View>
