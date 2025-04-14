@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import {
   View,
@@ -226,7 +224,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   updateButtonDisabled: {
-    backgroundColor: "#333333", // Darker gray when disabled
+    backgroundColor: "#333333", 
     opacity: 0.7,
   },
   updateButtonText: {
@@ -235,6 +233,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   updateButtonTextDisabled: {
-    color: "#8E8E93", // Lighter gray text when disabled
+    color: "#8E8E93",
   },
 })

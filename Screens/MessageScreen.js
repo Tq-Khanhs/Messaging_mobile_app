@@ -154,7 +154,7 @@ const MessagesScreen = ({ navigation }) => {
           <Ionicons name="time-outline" size={24} color="#888" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person-outline" size={24} color="#888" />
+          <Ionicons name="person-outline" size={24} color="#888" onPress={() => navigation.navigate("ProfileScreen")}  />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

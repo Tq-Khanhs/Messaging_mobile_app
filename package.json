@@ -20,6 +20,7 @@
     "expo-image-picker": "^16.0.6",
     "expo-status-bar": "~2.0.1",
     "lucide-react": "^0.473.0",
+    "lucide-react-native": "^0.487.0",
     "react": "18.3.1",
     "react-native": "0.76.6",
     "react-native-async-storage": "^0.0.1",

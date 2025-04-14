@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import {
   View,
@@ -16,13 +14,12 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
 
 const PasswordRecoveryScreen = ({ navigation }) => {
-  // Update the state variable from phoneNumber to email
+
   const [email, setEmail] = useState("")
   const { requestPasswordReset } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Update the handleSubmit function to use email
   const handleSubmit = async () => {
     if (!email) {
       Alert.alert("Lỗi", "Vui lòng nhập email")

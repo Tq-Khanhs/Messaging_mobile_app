@@ -11,7 +11,10 @@ import CreatePasswordScreen from "./Screens/CreatePassword";
 import FillName from "./Screens/FillNameScreen";
 import PersonalInfoScreen from "./Screens/PersonalInfo";
 import UpdateAvatar from "./Screens/UploadAvatarScreen";
-
+import ProfileScreen from "./Screens/ProfileScreen";
+import EditProfileScreen from "./Screens/EditProfileScreen";
+import SettingsScreen from "./Screens/SettingsScreen";
+import UpdatePasswordScreen from "./Screens/UpdatePasswordScreen";
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -29,6 +32,26 @@ export default function App() {
         <Stack.Screen
           name="Welcome"
           component={WelcomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ProfileScreen"
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EditProfileScreen"
+          component={EditProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SettingsScreen"
+          component={SettingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UpdatePasswordScreen"
+          component={UpdatePasswordScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

@@ -1,33 +1,37 @@
 import api from "./api"
 import { authService } from "./authService"
 
-
 export const userService = {
-
   getUserProfile: async () => {
     try {
+      console.log("Fetching user profile from:", `${api.defaults.baseURL}/users/profile`)
       const token = authService.getToken()
-      const response = await api.get("/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+
+      if (!token) {
+        console.error("No authentication token available")
+        throw new Error("Authentication required")
+      }
+
+      const response = await api.get("/users/profile")
+      console.log("User profile response:", response.status, response.data)
       return response.data
     } catch (error) {
       console.error("Get user profile error:", error)
+      if (error.response) {
+        console.error("Error status:", error.response.status)
+        console.error("Error data:", error.response.data)
+
+        if (error.response.status === 401) {
+          throw new Error("Unauthorized: Please log in again")
+        }
+      }
       throw error
     }
   },
 
-
   updateUserProfile: async (userData) => {
     try {
-      const token = authService.getToken()
-      const response = await api.put("/users/profile", userData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await api.put("/users/profile", userData)
       return response.data
     } catch (error) {
       console.error("Update user profile error:", error)
@@ -35,97 +39,36 @@ export const userService = {
     }
   },
 
-
-  getAvatarUploadUrl: async (fileType) => {
+  updatePassword: async (currentPassword, newPassword) => {
     try {
-      console.log("Getting avatar upload URL for fileType:", fileType)
-      const token = authService.getToken()
-      const response = await api.post(
-        "/users/avatar-upload-url",
-        { fileType },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-      console.log("Avatar upload URL response:", {
-        hasUploadUrl: !!response.data.uploadUrl,
-        hasKey: !!response.data.key,
+      const response = await api.put("/users/update-password", {
+        currentPassword,
+        newPassword,
       })
       return response.data
     } catch (error) {
-      console.error("Get avatar upload URL error:", error)
+      console.error("Update password error:", error)
       throw error
     }
   },
 
-  uploadToS3: async (uploadUrl, imageUri, fileType) => {
+  uploadAvatar: async (imageUri) => {
     try {
-      console.log("Uploading to S3 URL:", uploadUrl ? uploadUrl.substring(0, 50) + "..." : "undefined")
-      console.log("Image URI:", imageUri ? "Available" : "Not available")
-
-
-      const response = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": fileType,
-        },
-        body: imageUri,
-      })
-
-      console.log("S3 upload response status:", response.status)
-
-      if (!response.ok) {
-        throw new Error(`Failed to upload image to S3: ${response.status} ${response.statusText}`)
-      }
-
-      return { success: true }
-    } catch (error) {
-      console.error("Upload to S3 error:", error)
-      throw error
-    }
-  },
-
-  confirmAvatarUpload: async (key) => {
-    try {
-      console.log("Confirming avatar upload with key:", key)
-      const token = authService.getToken()
-      const response = await api.post(
-        "/users/confirm-avatar",
-        { key },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-      console.log("Confirm avatar response:", {
-        hasAvatarUrl: !!response.data.avatarUrl,
-        avatarUrl: response.data.avatarUrl,
-      })
-      return response.data
-    } catch (error) {
-      console.error("Confirm avatar upload error:", error)
-      throw error
-    }
-  },
-
-  uploadAvatarDirectly: async (imageUri) => {
-    try {
-      const token = authService.getToken()
-
       const formData = new FormData()
+
+      // Extract filename and type from URI
+      const uriParts = imageUri.split(".")
+      const fileType = uriParts[uriParts.length - 1]
+
       formData.append("avatar", {
         uri: imageUri,
-        type: "image/jpeg",
-        name: "avatar.jpg",
+        name: `avatar.${fileType}`,
+        type: `image/${fileType}`,
       })
 
       const response = await fetch(`${api.defaults.baseURL}/users/avatar`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
         body: formData,
@@ -138,7 +81,27 @@ export const userService = {
 
       return await response.json()
     } catch (error) {
-      console.error("Upload avatar directly error:", error)
+      console.error("Upload avatar error:", error)
+      throw error
+    }
+  },
+
+  getAvatarUploadUrl: async (fileType) => {
+    try {
+      const response = await api.post("/users/avatar-upload-url", { fileType })
+      return response.data
+    } catch (error) {
+      console.error("Get avatar upload URL error:", error)
+      throw error
+    }
+  },
+
+  confirmAvatarUpload: async (key) => {
+    try {
+      const response = await api.post("/users/confirm-avatar", { key })
+      return response.data
+    } catch (error) {
+      console.error("Confirm avatar upload error:", error)
       throw error
     }
   },
