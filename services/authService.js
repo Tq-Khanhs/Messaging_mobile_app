@@ -96,7 +96,6 @@ export const authService = {
     }
   },
 
-  // STEP 1: Request password reset code
   requestPasswordResetCode: async (email) => {
     try {
       console.log(`Requesting password reset code for: ${email}`)
@@ -116,7 +115,7 @@ export const authService = {
     }
   },
 
-  // STEP 2: Verify reset code
+
   verifyResetCode: async (sessionInfo, code, email) => {
     try {
       console.log("Verifying password reset code:", {
@@ -141,7 +140,7 @@ export const authService = {
     }
   },
 
-  // STEP 3: Complete password reset
+  
   completePasswordReset: async (resetToken, newPassword) => {
     try {
       console.log("Completing password reset with token:", resetToken?.substring(0, 10) + "...")

@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useRef } from "react"
 import {
   View,
@@ -152,7 +150,6 @@ export default function PersonalInfoScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="white" />
@@ -162,20 +159,20 @@ export default function PersonalInfoScreen({ navigation }) {
       <View style={styles.content}>
         <Text style={styles.title}>Thêm thông tin cá nhân</Text>
 
-        {/* Birthday Field */}
+ 
         <TouchableOpacity style={styles.inputField} onPress={openDatePicker}>
           <Text style={[styles.inputText, !birthday && styles.placeholderText]}>{birthday || "Sinh nhật"}</Text>
           <Ionicons name="calendar-outline" size={24} color="#555" />
         </TouchableOpacity>
 
-        {/* Gender Field */}
+
         <TouchableOpacity style={styles.inputField} onPress={openGenderPicker}>
           <Text style={[styles.inputText, !gender && styles.placeholderText]}>{gender || "Giới tính"}</Text>
           <Ionicons name="chevron-down" size={24} color="#555" />
         </TouchableOpacity>
       </View>
 
-      {/* Continue Button */}
+
       <TouchableOpacity
         style={[styles.continueButton, !isFormValid || isLoading ? {} : styles.continueButtonActive]}
         disabled={!isFormValid || isLoading}
@@ -184,7 +181,7 @@ export default function PersonalInfoScreen({ navigation }) {
         {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.continueButtonText}>Tiếp tục</Text>}
       </TouchableOpacity>
 
-      {/* Date Picker Modal */}
+
       <Modal
         transparent={true}
         animationType="slide"
@@ -199,10 +196,10 @@ export default function PersonalInfoScreen({ navigation }) {
             </View>
 
             <View style={styles.datePickerContainer}>
-              {/* Selection Highlight */}
+
               <View style={styles.selectionHighlight} />
 
-              {/* Day Picker */}
+
               <View style={styles.pickerColumnContainer}>
                 <ScrollView
                   ref={dayScrollRef}
@@ -224,7 +221,6 @@ export default function PersonalInfoScreen({ navigation }) {
                 </ScrollView>
               </View>
 
-              {/* Month Picker */}
               <View style={styles.pickerColumnContainer}>
                 <ScrollView
                   ref={monthScrollRef}
@@ -246,7 +242,6 @@ export default function PersonalInfoScreen({ navigation }) {
                 </ScrollView>
               </View>
 
-              {/* Year Picker */}
               <View style={styles.pickerColumnContainer}>
                 <ScrollView
                   ref={yearScrollRef}
@@ -281,7 +276,7 @@ export default function PersonalInfoScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Gender Picker Modal */}
+
       <Modal
         transparent={true}
         animationType="slide"
