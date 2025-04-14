@@ -11,7 +11,9 @@ import CreatePasswordScreen from "./Screens/CreatePassword";
 import FillName from "./Screens/FillNameScreen";
 import PersonalInfoScreen from "./Screens/PersonalInfo";
 import UpdateAvatar from "./Screens/UploadAvatarScreen";
-
+import ChatDetail from "./Screens/ChatDetail";
+import CallScreen from './components/Call/CallScreen';
+import VideoCallScreen from './components/Call/VideoCallScreen';
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -92,9 +94,23 @@ export default function App() {
           component={UpdateAvatar}
           options={{ headerShown: false }}
         />
-       
+          <Stack.Screen 
+          name="ChatDetail" 
+          component={ChatDetail} 
+          initialParams={{ 
+            contact: {
+              name: "Nguyễn Minh Đức",
+              avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+              online: false
+            }
+          }}
+          />
+          <Stack.Screen name="Call" component={CallScreen} />
+          <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+
       </Stack.Navigator>
     </NavigationContainer>
     </AuthProvider>
   );
+
 }
