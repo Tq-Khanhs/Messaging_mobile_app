@@ -122,6 +122,8 @@ export default function App() {
           <Stack.Screen 
           name="ChatDetail" 
           component={ChatDetail} 
+          options={{ headerShown: false }}
+
           initialParams={{ 
             contact: {
               name: "Nguyễn Minh Đức",
@@ -130,8 +132,12 @@ export default function App() {
             }
           }}
           />
-          <Stack.Screen name="Call" component={CallScreen} />
-          <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+          <Stack.Screen name="Call" component={CallScreen} 
+          options={{ headerShown: false }}
+          />
+          <Stack.Screen name="VideoCall" component={VideoCallScreen} 
+          options={{ headerShown: false }}
+          />
 
       </Stack.Navigator>
     </NavigationContainer>

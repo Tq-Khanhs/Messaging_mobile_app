@@ -1,9 +1,56 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { formatRecordingTime } from '../../utils/timeUtils';
 
-const MessageItem = ({ message, onPress }) => {
+import React, { useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Image,
+  Animated,
+  PanResponder
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+
+const MessageItem = ({ 
+  message, 
+  onPress, 
+  onLongPress, 
+  onSwipeToReply
+}) => {
+  // Animation value for swipe
+  const swipeAnim = useRef(new Animated.Value(0)).current;
+  
+  // Pan responder for swipe gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to horizontal movements
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy * 3);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow swiping right for their messages and left for my messages
+        if ((!message.isMe && gestureState.dx > 0) || (message.isMe && gestureState.dx < 0)) {
+          // Limit the swipe distance
+          const newValue = Math.min(Math.abs(gestureState.dx), 80) * (gestureState.dx < 0 ? -1 : 1);
+          swipeAnim.setValue(newValue);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped far enough, trigger reply
+        if (Math.abs(gestureState.dx) > 60) {
+          onSwipeToReply(message);
+        }
+        
+        // Reset position
+        Animated.spring(swipeAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
   // Determine bubble style based on position in sequence
   const getBubbleStyle = () => {
     if (message.isMe) {
@@ -54,9 +101,17 @@ const MessageItem = ({ message, onPress }) => {
               <View style={styles.voiceWave} />
             </View>
             <Text style={message.isMe ? styles.myText : styles.theirText}>
-              {formatRecordingTime(message.voiceDuration)}
+              {message.voiceDuration ? `${message.voiceDuration}s` : "0:00"}
             </Text>
           </View>
+        );
+      case 'image':
+        return (
+          <Image 
+            source={{ uri: message.imageUri }} 
+            style={styles.imageMessage} 
+            resizeMode="cover"
+          />
         );
       default:
         return (
@@ -65,6 +120,93 @@ const MessageItem = ({ message, onPress }) => {
           </Text>
         );
     }
+  };
+
+  // Truncate text to first 10 characters + "..."
+  const truncateText = (text) => {
+    if (!text) return "";
+    return text.length > 10 ? text.substring(0, 10) + '...' : text;
+  };
+
+  // Render reply content if this message is a reply
+  const renderReplyContent = () => {
+    if (!message.replyTo) return null;
+    
+    // Get preview text based on message type
+    let previewText = "";
+    switch (message.replyTo.type) {
+      case 'text':
+        previewText = truncateText(message.replyTo.text);
+        break;
+      case 'sticker':
+        previewText = '[Sticker]';
+        break;
+      case 'voice':
+        previewText = '[Voice Message]';
+        break;
+      case 'image':
+        previewText = '[Hình ảnh]';
+        break;
+      default:
+        previewText = '[Media]';
+    }
+    
+    return (
+      <View style={[
+        styles.replyContainer, 
+        message.isMe ? styles.myReplyContainer : styles.theirReplyContainer
+      ]}>
+        <View style={styles.replyLine} />
+        <View style={styles.replyContent}>
+          <Text style={styles.replyName}>
+            {message.replyTo.isMe ? 'Bạn' : message.replyTo.sender.name}
+          </Text>
+          <Text style={styles.replyText} numberOfLines={1}>
+            {previewText}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Render reaction icon if any
+  const renderReaction = () => {
+    if (!message.reaction) return null;
+    
+    let iconName = 'thumb-up';
+    let iconColor = '#0084FF';
+    
+    switch (message.reaction) {
+      case 'love':
+        iconName = 'favorite';
+        iconColor = '#F44336';
+        break;
+      case 'haha':
+        iconName = 'mood';
+        iconColor = '#FFD700';
+        break;
+      case 'sad':
+        iconName = 'sentiment-dissatisfied';
+        iconColor = '#FFD700';
+        break;
+      case 'angry':
+        iconName = 'sentiment-very-dissatisfied';
+        iconColor = '#F44336';
+        break;
+      case 'wow':
+        iconName = 'sentiment-satisfied-alt';
+        iconColor = '#FFD700';
+        break;
+    }
+    
+    return (
+      <View style={[
+        styles.reactionContainer,
+        message.isMe ? styles.myReactionContainer : styles.theirReactionContainer
+      ]}>
+        <Icon name={iconName} size={16} color={iconColor} />
+      </View>
+    );
   };
   
   return (
@@ -79,15 +221,59 @@ const MessageItem = ({ message, onPress }) => {
         </View>
       )}
       
-      <TouchableOpacity 
-        activeOpacity={0.8}
-        onPress={onPress}
+      <Animated.View 
         style={[
           styles.messageContainer, 
           message.isMe ? styles.myMessage : styles.theirMessage,
-          message.type === 'sticker' && styles.stickerMessageContainer
+          { transform: [{ translateX: swipeAnim }] }
         ]}
+        {...panResponder.panHandlers}
       >
+        {/* Reply indicator */}
+        {message.isMe ? (
+          <Animated.View style={[
+            styles.replyIndicator,
+            styles.myReplyIndicator,
+            {
+              opacity: swipeAnim.interpolate({
+                inputRange: [-80, 0],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+              transform: [{
+                translateX: swipeAnim.interpolate({
+                  inputRange: [-80, 0],
+                  outputRange: [-20, 0],
+                  extrapolate: 'clamp',
+                })
+              }]
+            }
+          ]}>
+            <Icon name="reply" size={20} color="#FFFFFF" />
+          </Animated.View>
+        ) : (
+          <Animated.View style={[
+            styles.replyIndicator,
+            styles.theirReplyIndicator,
+            {
+              opacity: swipeAnim.interpolate({
+                inputRange: [0, 80],
+                outputRange: [0, 1],
+                extrapolate: 'clamp',
+              }),
+              transform: [{
+                translateX: swipeAnim.interpolate({
+                  inputRange: [0, 80],
+                  outputRange: [0, 20],
+                  extrapolate: 'clamp',
+                })
+              }]
+            }
+          ]}>
+            <Icon name="reply" size={20} color="#FFFFFF" />
+          </Animated.View>
+        )}
+        
         {/* Avatar or placeholder for alignment */}
         {!message.isMe ? (
           message.isFirstInSequence ? (
@@ -101,15 +287,35 @@ const MessageItem = ({ message, onPress }) => {
         ) : null}
         
         {/* Message bubble */}
-        <View style={[
-          styles.messageBubble,
-          message.isMe ? styles.myBubble : styles.theirBubble,
-          getBubbleStyle(),
-          message.type === 'sticker' && styles.stickerBubble
-        ]}>
-          {renderMessageContent()}
-        </View>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => onPress(message.id)}
+          onLongPress={(event) => {
+            // Get the position of the message for the context menu
+            event.target.measure((x, y, width, height, pageX, pageY) => {
+              onLongPress(message, { x: pageX, y: pageY, width, height });
+            });
+          }}
+          delayLongPress={200}
+        >
+          <View style={[
+            styles.messageBubble,
+            message.isMe ? styles.myBubble : styles.theirBubble,
+            getBubbleStyle(),
+            message.type === 'sticker' && styles.stickerBubble,
+            message.type === 'image' && styles.imageBubble
+          ]}>
+            {/* Reply content if this is a reply */}
+            {renderReplyContent()}
+            
+            {/* Message content */}
+            {renderMessageContent()}
+          </View>
+          
+          {/* Reaction */}
+          {renderReaction()}
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -126,12 +332,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 2,
   },
-  stickerMessageContainer: {
-    alignItems: 'center',
-  },
   myMessage: {
     justifyContent: 'flex-end',
-    paddingLeft: 36, // Add padding to align with other messages
+    marginLeft: 50, // Add padding to align with other messages
   },
   theirMessage: {
     justifyContent: 'flex-start',
@@ -151,7 +354,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   messageBubble: {
-    maxWidth: '75%',
+    maxWidth: '100%',
     padding: 10,
     paddingHorizontal: 12,
   },
@@ -159,10 +362,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     padding: 0,
   },
+  imageBubble: {
+    padding: 0,
+    overflow: 'hidden',
+    borderRadius: 12,
+  },
   stickerImage: {
     width: 100,
     height: 100,
-    borderRadius: 8,
+  },
+  imageMessage: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
   },
   // My message bubbles (blue)
   myBubble: {
@@ -222,9 +434,11 @@ const styles = StyleSheet.create({
   },
   myText: {
     color: '#FFFFFF',
+    fontSize: 16,
   },
   theirText: {
     color: '#EEEEEE',
+    fontSize: 16,
   },
   timeIndicator: {
     alignItems: 'center',
@@ -250,6 +464,78 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 10,
+  },
+  // Reply indicator styles
+  replyIndicator: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0, 132, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  myReplyIndicator: {
+    left: -15,
+  },
+  theirReplyIndicator: {
+    right: -15,
+  },
+  // Reply content styles
+  replyContainer: {
+    flexDirection: 'row',
+    marginBottom: 5,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    width: '100%',
+  },
+  myReplyContainer: {
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  theirReplyContainer: {
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  replyLine: {
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 8,
+  },
+  replyContent: {
+    flex: 1,
+  },
+  replyName: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  replyText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+  },
+  // Reaction styles
+  reactionContainer: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  myReactionContainer: {
+    bottom: -8,
+    right: 5,
+  },
+  theirReactionContainer: {
+    bottom: -8,
+    left: 5,
   },
 });
 
