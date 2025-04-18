@@ -4,9 +4,7 @@ import { createContext, useState, useEffect, useContext } from "react"
 import { authService } from "../services/authService"
 import { userService } from "../services/userService"
 
-
 const AuthContext = createContext()
-
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)

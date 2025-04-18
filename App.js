@@ -16,9 +16,11 @@ import EditProfileScreen from "./Screens/EditProfileScreen"
 import SettingsScreen from "./Screens/SettingsScreen"
 import UpdatePasswordScreen from "./Screens/UpdatePasswordScreen"
 import SearchScreen from "./Screens/SearchScreen"
+import ChatDetailScreen from "./Screens/ChatDetailScreen"
 import { NavigationContainer } from "@react-navigation/native"
 import { createStackNavigator } from "@react-navigation/stack"
 import { AuthProvider } from "./context/AuthContext"
+import FriendRequestsScreen from "./Screens/FriendRequestsScreen"
 
 const Stack = createStackNavigator()
 
@@ -45,6 +47,8 @@ export default function App() {
           <Stack.Screen name="FillName" component={FillName} options={{ headerShown: false }} />
           <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ headerShown: false }} />
           <Stack.Screen name="UploadAvt" component={UpdateAvatar} options={{ headerShown: false }} />
+          <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FriendRequestsScreen" component={FriendRequestsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

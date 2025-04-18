@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import {
   View,
@@ -10,7 +12,6 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
 } from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
@@ -75,7 +76,6 @@ const SignUpScreen = ({ navigation, route }) => {
   }
 
   return (
-    
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 70
+    marginTop: 70,
   },
   loginText: {
     color: "#FFFFFF",

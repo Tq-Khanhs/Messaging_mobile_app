@@ -1,4 +1,6 @@
-import { useState } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -9,55 +11,200 @@ import {
   TextInput,
   StatusBar,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native"
 import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons"
-
-const conversations = [
-  {
-    id: "1",
-    name: "Nhóm 8 TTĐT_TH(1-3)",
-    avatar: require("../assets/icon.png"),
-    lastMessage: "Phạm Hoàng Phi: [Hình ảnh]",
-    time: "10 phút",
-    memberCount: 5,
-    isGroup: true,
-  },
-  {
-    id: "2",
-    name: "Media Box",
-    avatar: require("../assets/icon.png"),
-    lastMessage: "Báo Mới: Người lính cứu hỏa kể lại phút vượt khói...",
-    time: "",
-    isOfficial: true,
-    hasNotification: true,
-  },
-  {
-    id: "3",
-    name: "Hoàng Phú IELTS Fighter",
-    avatar: require("../assets/icon.png"),
-    lastMessage: "[Hình ảnh]",
-    time: "2 giờ",
-  },
-]
+import { messageService } from "../services/messageService"
+import { authService } from "../services/authService"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const MessagesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("priority")
+  const [conversations, setConversations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
+
+  useEffect(() => {
+    const loadUserAndConversations = async () => {
+      try {
+        setLoading(true)
+
+        // Check if user is authenticated
+        const token = await AsyncStorage.getItem("authToken")
+        if (!token) {
+          console.log("No auth token found, redirecting to login")
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+          return
+        }
+
+        console.log("Auth token found, length:", token.length)
+
+        const user = await authService.getCurrentUser()
+        setCurrentUser(user)
+
+        if (user) {
+          console.log("User loaded successfully:", user.userId)
+          await fetchConversations()
+        } else {
+          console.log("User data not found, redirecting to login")
+          await AsyncStorage.removeItem("authToken")
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+        }
+      } catch (err) {
+        console.error("Error loading user and conversations:", err)
+
+        // Check if error is due to authentication
+        if (err.response && err.response.status === 401) {
+          console.log("Authentication error, redirecting to login")
+          await AsyncStorage.removeItem("authToken")
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+        } else {
+          setError("Failed to load conversations")
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadUserAndConversations()
+
+    // Set up a refresh interval to check for new messages
+    const intervalId = setInterval(fetchConversations, 10000) // every 10 seconds
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  // Update the fetchConversations function to properly get conversations from the API
+  const fetchConversations = async () => {
+    try {
+      // Check if token exists before making the request
+      const token = await AsyncStorage.getItem("authToken")
+      if (!token) {
+        console.log("No auth token found when fetching conversations")
+        setError("Authentication required")
+        return
+      }
+
+      console.log("Fetching conversations...")
+      const data = await messageService.getConversations()
+      console.log(`Received ${data.length} conversations`)
+      setConversations(data)
+      setError(null)
+    } catch (err) {
+      console.error("Error fetching conversations:", err)
+
+      // Check if error is due to authentication
+      if (err.response && err.response.status === 401) {
+        setError("Session expired. Please login again.")
+
+        // Optional: Auto redirect to login after a delay
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+        }, 2000)
+      } else {
+        setError("Failed to load conversations")
+      }
+    }
+  }
+
+  // Update the handleConversationPress function to properly navigate to the chat detail screen
+  const handleConversationPress = async (conversation) => {
+    // Mark conversation as read when opening it
+    if (conversation.unreadCount > 0) {
+      try {
+        // Mark all unread messages as read
+        if (conversation.lastMessage) {
+          await messageService.markMessageAsRead(conversation.lastMessage.messageId)
+        }
+
+        // Update the local state to reflect the read status
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) =>
+            conv.conversationId === conversation.conversationId ? { ...conv, unreadCount: 0 } : conv,
+          ),
+        )
+      } catch (err) {
+        console.error("Error marking conversation as read:", err)
+      }
+    }
+
+    console.log("Navigating to conversation:", {
+      conversationId: conversation.conversationId,
+      name: conversation.participant?.fullName || "Unknown",
+    })
+
+    // Navigate to chat detail screen with the correct conversation ID
+    navigation.navigate("ChatDetail", {
+      conversation: {
+        id: conversation.conversationId,
+        name: conversation.participant?.fullName || "Unknown",
+        avatar: conversation.participant?.avatarUrl,
+        online: false,
+        isGroup: conversation.isGroup || false,
+      },
+    })
+  }
+
+  const formatLastMessagePreview = (message) => {
+    if (!message) return ""
+
+    switch (message.type) {
+      case "image":
+        return "[Hình ảnh]"
+      case "file":
+        return "[File]"
+      case "emoji":
+        return message.content // Show the emoji directly
+      case "text":
+      default:
+        // If sender is current user, prepend "Bạn: "
+        const prefix = message.senderId === currentUser?.userId ? "Bạn: " : ""
+
+        // If message is recalled or deleted
+        if (message.isRecalled) return "Tin nhắn đã bị thu hồi"
+        if (message.isDeleted) return "Tin nhắn đã bị xóa"
+
+        // Truncate long messages
+        let content = message.content
+        if (content && content.length > 30) {
+          content = content.substring(0, 27) + "..."
+        }
+
+        return prefix + content
+    }
+  }
 
   const renderConversationItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.conversationItem}
-      onPress={() => navigation.navigate("ChatDetail", { conversation: item })}
-    >
+    <TouchableOpacity style={styles.conversationItem} onPress={() => handleConversationPress(item)}>
       <View style={styles.avatarContainer}>
         {item.isGroup ? (
           <>
-            <Image source={item.avatar} style={styles.avatar} />
+            <Image
+              source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
+              style={styles.avatar}
+            />
             <View style={styles.memberCountBadge}>
-              <Text style={styles.memberCountText}>{item.memberCount}</Text>
+              <Text style={styles.memberCountText}>{item.memberCount || 2}</Text>
             </View>
           </>
         ) : (
-          <Image source={item.avatar} style={styles.avatar} />
+          <Image
+            source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
+            style={styles.avatar}
+          />
         )}
       </View>
 
@@ -65,7 +212,7 @@ const MessagesScreen = ({ navigation }) => {
         <View style={styles.conversationHeader}>
           <View style={styles.nameContainer}>
             <Text style={styles.conversationName} numberOfLines={1}>
-              {item.name}
+              {item.participant?.fullName || "Unknown"}
             </Text>
             {item.isOfficial && (
               <View style={styles.officialBadge}>
@@ -73,17 +220,38 @@ const MessagesScreen = ({ navigation }) => {
               </View>
             )}
           </View>
-          <Text style={styles.timeText}>{item.time}</Text>
+          <Text style={styles.timeText}>
+            {new Date(item.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </Text>
         </View>
         <View style={styles.messageContainer}>
           <Text style={styles.lastMessageText} numberOfLines={1}>
-            {item.lastMessage}
+            {formatLastMessagePreview(item.lastMessage)}
           </Text>
-          {item.hasNotification && <View style={styles.notificationDot} />}
+          {item.unreadCount > 0 && <View style={styles.notificationDot} />}
         </View>
       </View>
     </TouchableOpacity>
   )
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#0068FF" />
+      </SafeAreaView>
+    )
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchConversations}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -122,12 +290,21 @@ const MessagesScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={conversations}
-        renderItem={renderConversationItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-      />
+      {conversations.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Không có cuộc trò chuyện nào</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={conversations}
+          renderItem={renderConversationItem}
+          keyExtractor={(item) => item.conversationId.toString()}
+          showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={fetchConversations}
+        />
+      )}
+
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
           <Ionicons name="chatbubble-outline" size={24} color="#0068FF" />
@@ -151,6 +328,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#1A1A1A",
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#0068FF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    color: "#888",
+    fontSize: 16,
+    textAlign: "center",
   },
   header: {
     flexDirection: "row",
@@ -310,4 +517,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 })
+
 export default MessagesScreen

@@ -2,6 +2,15 @@ import api from "./api"
 import { authService } from "./authService"
 
 export const userService = {
+  searchUsers: async (query) => {
+    try {
+      const response = await api.get(`/users/search?query=${query}`)
+      return response.data.users
+    } catch (error) {
+      console.error("Search users error:", error)
+      throw error
+    }
+  },
   getUserProfile: async () => {
     try {
       console.log("Fetching user profile from:", `${api.defaults.baseURL}/users/profile`)
@@ -55,8 +64,6 @@ export const userService = {
   uploadAvatar: async (imageUri) => {
     try {
       const formData = new FormData()
-
-      // Extract filename and type from URI
       const uriParts = imageUri.split(".")
       const fileType = uriParts[uriParts.length - 1]
 

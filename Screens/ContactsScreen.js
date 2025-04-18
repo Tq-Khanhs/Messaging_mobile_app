@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client"
+
+import { useState } from "react"
 import {
   View,
   Text,
@@ -10,95 +12,86 @@ import {
   StatusBar,
   SectionList,
   SafeAreaView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 
 const CONTACTS_DATA = [
   {
-    title: 'A',
+    title: "A",
     data: [
-      { id: '1', name: 'A Văn', avatar: require('../assets/icon.png') },
-      { id: '2', name: 'Anh Thư', avatar: require('../assets/icon.png') },
+      { id: "1", name: "A Văn", avatar: require("../assets/icon.png") },
+      { id: "2", name: "Anh Thư", avatar: require("../assets/icon.png") },
     ],
   },
   {
-    title: 'B',
+    title: "B",
     data: [
-      { id: '3', name: 'Bạn Tú', avatar: require('../assets/icon.png') },
-      { id: '4', name: 'Bùi Quốc Sử', avatar: require('../assets/icon.png') },
+      { id: "3", name: "Bạn Tú", avatar: require("../assets/icon.png") },
+      { id: "4", name: "Bùi Quốc Sử", avatar: require("../assets/icon.png") },
     ],
   },
   {
-    title: 'C',
+    title: "C",
     data: [
-      { id: '5', name: 'Ch Thụy', avatar: require('../assets/icon.png') },
-      { id: '6', name: 'Chau Uyen', avatar: require('../assets/icon.png') },
-      { id: '7', name: 'Chị Thảo', avatar: require('../assets/icon.png') },
+      { id: "5", name: "Ch Thụy", avatar: require("../assets/icon.png") },
+      { id: "6", name: "Chau Uyen", avatar: require("../assets/icon.png") },
+      { id: "7", name: "Chị Thảo", avatar: require("../assets/icon.png") },
     ],
   },
-];
+]
 
 const GROUPS_DATA = [
   {
-    id: '1',
-    name: 'Nhóm 12 _ CNM',
-    lastMessage: 'Bạn: Phần backend ai thực hiện z á @All',
-    time: '30 phút',
+    id: "1",
+    name: "Nhóm 12 _ CNM",
+    lastMessage: "Bạn: Phần backend ai thực hiện z á @All",
+    time: "30 phút",
     memberCount: 5,
-    avatars: [
-      require('../assets/icon.png'),
-      require('../assets/icon.png'),
-    ]
+    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
   },
   {
-    id: '2',
-    name: 'Nhóm 8 TTĐT_TH(1-3)',
-    lastMessage: '[Hình ảnh]',
-    time: '1 giờ',
+    id: "2",
+    name: "Nhóm 8 TTĐT_TH(1-3)",
+    lastMessage: "[Hình ảnh]",
+    time: "1 giờ",
     memberCount: 5,
-    avatars: [
-      require('../assets/icon.png'),
-      require('../assets/icon.png'),
-    ]
+    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
   },
   {
-    id: '3',
-    name: 'NOW_TH_T3_10_12_KTTKPM',
-    lastMessage: 'Hôm nay (17/03) là sinh nhật của Nhựt Anh Nguyễn,...',
-    time: '13 giờ',
+    id: "3",
+    name: "NOW_TH_T3_10_12_KTTKPM",
+    lastMessage: "Hôm nay (17/03) là sinh nhật của Nhựt Anh Nguyễn,...",
+    time: "13 giờ",
     memberCount: 30,
-    avatars: [
-      require('../assets/icon.png'),
-      require('../assets/icon.png'),
-    ],
+    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
   },
-];
+]
 
 const SPECIAL_SECTIONS = [
   {
-    id: 'friend_requests',
-    name: 'Lời mời kết bạn',
-    count: '(5)',
-    icon: 'people',
-    iconColor: '#0068FF',
-    iconBgColor: '#0068FF20',
+    id: "friend_requests",
+    name: "Lời mời kết bạn",
+    count: "(5)",
+    icon: "people",
+    iconColor: "#0068FF",
+    iconBgColor: "#0068FF20",
   },
   {
-    id: 'phone_contacts',
-    name: 'Danh bạ máy',
-    description: 'Các liên hệ có dùng Zalo',
-    icon: 'book',
-    iconColor: '#0068FF',
-    iconBgColor: '#0068FF20',
+    id: "phone_contacts",
+    name: "Danh bạ máy",
+    description: "Các liên hệ có dùng Zalo",
+    icon: "book",
+    iconColor: "#0068FF",
+    iconBgColor: "#0068FF20",
   },
-];
+]
 
 const ContactsScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('friends');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState("friends")
+  const [activeFilter, setActiveFilter] = useState("all")
 
   const renderSpecialSection = ({ item }) => (
-    <TouchableOpacity style={styles.specialSection}>
+    <TouchableOpacity style={styles.specialSection} onPress={() => navigation.navigate("FriendRequestsScreen")}>
       <View style={[styles.specialSectionIcon, { backgroundColor: item.iconBgColor }]}>
         <Ionicons name={item.icon} size={24} color={item.iconColor} />
       </View>
@@ -107,12 +100,10 @@ const ContactsScreen = ({ navigation }) => {
           <Text style={styles.specialSectionName}>{item.name}</Text>
           {item.count && <Text style={styles.specialSectionCount}>{item.count}</Text>}
         </View>
-        {item.description && (
-          <Text style={styles.specialSectionDescription}>{item.description}</Text>
-        )}
+        {item.description && <Text style={styles.specialSectionDescription}>{item.description}</Text>}
       </View>
     </TouchableOpacity>
-  );
+  )
 
   const renderContactItem = ({ item }) => (
     <View style={styles.contactItem}>
@@ -127,26 +118,19 @@ const ContactsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  )
 
   const renderSectionHeader = ({ section: { title } }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionHeaderText}>{title}</Text>
     </View>
-  );
+  )
 
   const renderGroupItem = ({ item }) => (
     <TouchableOpacity style={styles.groupItem}>
       <View style={styles.groupAvatarContainer}>
         {item.avatars.slice(0, 2).map((avatar, index) => (
-          <Image
-            key={index}
-            source={avatar}
-            style={[
-              styles.groupAvatar,
-              index === 1 && styles.groupAvatarOverlap
-            ]}
-          />
+          <Image key={index} source={avatar} style={[styles.groupAvatar, index === 1 && styles.groupAvatarOverlap]} />
         ))}
         <View style={styles.memberCountBadge}>
           <Text style={styles.memberCountText}>{item.memberCount}</Text>
@@ -155,14 +139,18 @@ const ContactsScreen = ({ navigation }) => {
 
       <View style={styles.groupContent}>
         <View style={styles.groupHeader}>
-          <Text style={styles.groupName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.groupName} numberOfLines={1}>
+            {item.name}
+          </Text>
           <Text style={styles.timeText}>{item.time}</Text>
         </View>
         <View style={styles.messageContainer}>
           {item.hasBirthday && (
             <View style={styles.birthdayContainer}>
               <Ionicons name="gift" size={16} color="#FF3B30" style={styles.birthdayIcon} />
-              <Text style={styles.birthdayText} numberOfLines={1}>{item.birthdayMessage}</Text>
+              <Text style={styles.birthdayText} numberOfLines={1}>
+                {item.birthdayMessage}
+              </Text>
             </View>
           )}
           <Text style={styles.lastMessageText} numberOfLines={1}>
@@ -171,7 +159,7 @@ const ContactsScreen = ({ navigation }) => {
         </View>
       </View>
     </TouchableOpacity>
-  );
+  )
 
   const renderCreateGroupButton = () => (
     <TouchableOpacity style={styles.createGroupButton}>
@@ -183,7 +171,7 @@ const ContactsScreen = ({ navigation }) => {
       </View>
       <Text style={styles.createGroupText}>Tạo nhóm mới</Text>
     </TouchableOpacity>
-  );
+  )
 
   const renderGroupsHeader = () => (
     <View style={styles.groupsHeaderContainer}>
@@ -193,21 +181,17 @@ const ContactsScreen = ({ navigation }) => {
         <Text style={styles.sortButtonText}>Sắp xếp</Text>
       </TouchableOpacity>
     </View>
-  );
+  )
 
   return (
-    <SafeAreaView style={styles.container} edges={['right', 'left']}>
+    <SafeAreaView style={styles.container} edges={["right", "left"]}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#888" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm"
-            placeholderTextColor="#888"
-          />
+          <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" />
         </View>
         <TouchableOpacity style={styles.headerButton}>
           <Ionicons name="person-add" size={22} color="#FFF" />
@@ -217,50 +201,44 @@ const ContactsScreen = ({ navigation }) => {
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-          onPress={() => setActiveTab('friends')}
+          style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+          onPress={() => setActiveTab("friends")}
         >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Bạn bè
-          </Text>
+          <Text style={[styles.tabText, activeTab === "friends" && styles.activeTabText]}>Bạn bè</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'groups' && styles.activeTab]}
-          onPress={() => setActiveTab('groups')}
+          style={[styles.tab, activeTab === "groups" && styles.activeTab]}
+          onPress={() => setActiveTab("groups")}
         >
-          <Text style={[styles.tabText, activeTab === 'groups' && styles.activeTabText]}>
-            Nhóm
-          </Text>
+          <Text style={[styles.tabText, activeTab === "groups" && styles.activeTabText]}>Nhóm</Text>
         </TouchableOpacity>
       </View>
 
       {/* Content Container */}
       <View style={styles.contentContainer}>
-        {activeTab === 'friends' ? (
+        {activeTab === "friends" ? (
           <>
             <View style={styles.specialSectionsContainer}>
               <FlatList
                 data={SPECIAL_SECTIONS}
                 renderItem={renderSpecialSection}
-                keyExtractor={item => item.id}
+                keyExtractor={(item) => item.id}
                 scrollEnabled={false}
               />
             </View>
 
             <View style={styles.filtersContainer}>
               <TouchableOpacity
-                style={[styles.filterButton, activeFilter === 'all' && styles.activeFilterButton]}
-                onPress={() => setActiveFilter('all')}
+                style={[styles.filterButton, activeFilter === "all" && styles.activeFilterButton]}
+                onPress={() => setActiveFilter("all")}
               >
-                <Text style={[styles.filterText, activeFilter === 'all' && styles.activeFilterText]}>
-                  Tất cả 75
-                </Text>
+                <Text style={[styles.filterText, activeFilter === "all" && styles.activeFilterText]}>Tất cả 75</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterButton, activeFilter === 'recent' && styles.activeFilterButton]}
-                onPress={() => setActiveFilter('recent')}
+                style={[styles.filterButton, activeFilter === "recent" && styles.activeFilterButton]}
+                onPress={() => setActiveFilter("recent")}
               >
-                <Text style={[styles.filterText, activeFilter === 'recent' && styles.activeFilterText]}>
+                <Text style={[styles.filterText, activeFilter === "recent" && styles.activeFilterText]}>
                   Mới truy cập
                 </Text>
               </TouchableOpacity>
@@ -270,7 +248,7 @@ const ContactsScreen = ({ navigation }) => {
               sections={CONTACTS_DATA}
               renderItem={renderContactItem}
               renderSectionHeader={renderSectionHeader}
-              keyExtractor={item => item.id}
+              keyExtractor={(item) => item.id}
               stickySectionHeadersEnabled={false}
               showsVerticalScrollIndicator={false}
               style={styles.sectionList}
@@ -284,7 +262,7 @@ const ContactsScreen = ({ navigation }) => {
             <FlatList
               data={GROUPS_DATA}
               renderItem={renderGroupItem}
-              keyExtractor={item => item.id}
+              keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
               style={styles.groupsList}
             />
@@ -309,37 +287,37 @@ const ContactsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: "#1A1A1A",
   },
   contentContainer: {
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   searchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#333',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#333",
     borderRadius: 20,
     paddingHorizontal: 12,
     height: 40,
   },
   searchInput: {
     flex: 1,
-    color: '#FFF',
+    color: "#FFF",
     marginLeft: 8,
     fontSize: 16,
   },
@@ -347,38 +325,38 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   tabContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0068FF',
+    borderBottomColor: "#0068FF",
   },
   tabText: {
-    color: '#888',
+    color: "#888",
     fontSize: 16,
   },
   activeTabText: {
-    color: '#FFF',
-    fontWeight: '500',
+    color: "#FFF",
+    fontWeight: "500",
   },
   specialSectionsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   specialSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
@@ -386,70 +364,70 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   specialSectionContent: {
     flex: 1,
   },
   specialSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   specialSectionName: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   specialSectionCount: {
-    color: '#888',
+    color: "#888",
     fontSize: 16,
     marginLeft: 4,
   },
   specialSectionDescription: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
     marginTop: 2,
   },
   filtersContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   filterButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
   },
   activeFilterButton: {
-    backgroundColor: '#444',
+    backgroundColor: "#444",
   },
   filterText: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
   },
   activeFilterText: {
-    color: '#FFF',
+    color: "#FFF",
   },
   sectionList: {
     flex: 1,
   },
   sectionHeader: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: "#1A1A1A",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   sectionHeaderText: {
-    color: '#888',
+    color: "#888",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -461,89 +439,89 @@ const styles = StyleSheet.create({
   },
   contactName: {
     flex: 1,
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
   },
   contactActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   actionButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   // Groups tab styles
   groupsList: {
     flex: 1,
   },
   createGroupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   createGroupIcon: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#0068FF20',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#0068FF20",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
-    position: 'relative',
+    position: "relative",
   },
   plusIconContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: '#0068FF',
+    backgroundColor: "#0068FF",
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#1A1A1A',
+    borderColor: "#1A1A1A",
   },
   createGroupText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   groupsHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   groupsHeaderText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   sortButtonText: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
     marginLeft: 4,
   },
   groupItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   groupAvatarContainer: {
-    position: 'relative',
+    position: "relative",
     width: 50,
     height: 50,
     marginRight: 12,
@@ -552,94 +530,94 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     borderWidth: 1,
-    borderColor: '#1A1A1A',
+    borderColor: "#1A1A1A",
   },
   groupAvatarOverlap: {
     top: 10,
     left: 10,
   },
   memberCountBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     borderRadius: 10,
     width: 20,
     height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#1A1A1A',
+    borderColor: "#1A1A1A",
   },
   memberCountText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   groupContent: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   groupHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   groupName: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     flex: 1,
     marginRight: 8,
   },
   timeText: {
-    color: '#888',
+    color: "#888",
     fontSize: 12,
   },
   messageContainer: {
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   lastMessageText: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
   },
   birthdayContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 2,
   },
   birthdayIcon: {
     marginRight: 4,
   },
   birthdayText: {
-    color: '#FF3B30',
+    color: "#FF3B30",
     fontSize: 14,
   },
   bottomNav: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 0.5,
-    borderTopColor: '#333',
-    backgroundColor: '#1A1A1A',
+    borderTopColor: "#333",
+    backgroundColor: "#1A1A1A",
   },
   navItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 8,
   },
   activeNavItem: {
     borderTopWidth: 2,
-    borderTopColor: '#0068FF',
+    borderTopColor: "#0068FF",
   },
   activeNavText: {
-    color: '#0068FF',
+    color: "#0068FF",
     fontSize: 12,
     marginTop: 2,
   },
-});
+})
 
-export default ContactsScreen;
+export default ContactsScreen

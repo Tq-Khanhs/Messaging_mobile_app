@@ -1,4 +1,5 @@
 import api from "./api"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 // Store token in memory for now
 let authToken = null
@@ -79,14 +80,20 @@ export const authService = {
   // Login
   login: async (email, password) => {
     try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      })
+      console.log(`Attempting login for: ${email}`)
+      const response = await api.post("/auth/login", { email, password })
 
-      // Store token in memory
       if (response.data.token) {
+        console.log("Login successful, storing auth token")
+        await AsyncStorage.setItem("authToken", response.data.token)
+        await AsyncStorage.setItem("user", JSON.stringify(response.data.user))
+
+        // Set the token in memory as well
         authToken = response.data.token
+
+        console.log("Auth token and user data stored successfully")
+      } else {
+        console.error("Login response missing token:", response.data)
       }
 
       return response.data
@@ -115,7 +122,6 @@ export const authService = {
     }
   },
 
-
   verifyResetCode: async (sessionInfo, code, email) => {
     try {
       console.log("Verifying password reset code:", {
@@ -140,7 +146,6 @@ export const authService = {
     }
   },
 
-  
   completePasswordReset: async (resetToken, newPassword) => {
     try {
       console.log("Completing password reset with token:", resetToken?.substring(0, 10) + "...")
@@ -163,7 +168,8 @@ export const authService = {
   // Logout
   logout: async () => {
     try {
-      authToken = null
+      await AsyncStorage.removeItem("authToken")
+      await AsyncStorage.removeItem("user")
       return { success: true }
     } catch (error) {
       console.error("Logout error:", error)
@@ -174,5 +180,33 @@ export const authService = {
   // Get token
   getToken: () => {
     return authToken
+  },
+
+  getCurrentUser: async () => {
+    try {
+      const userString = await AsyncStorage.getItem("user")
+      const user = userString ? JSON.parse(userString) : null
+
+      if (user) {
+        console.log("Retrieved current user from storage:", user.userId)
+      } else {
+        console.log("No user found in storage")
+      }
+
+      return user
+    } catch (error) {
+      console.error("Get current user error:", error)
+      return null
+    }
+  },
+
+  isAuthenticated: async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken")
+      return !!token
+    } catch (error) {
+      console.error("Auth check error:", error)
+      return false
+    }
   },
 }

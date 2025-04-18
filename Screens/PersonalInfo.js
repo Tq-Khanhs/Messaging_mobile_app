@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef } from "react"
 import {
   View,
@@ -159,19 +161,16 @@ export default function PersonalInfoScreen({ navigation }) {
       <View style={styles.content}>
         <Text style={styles.title}>Thêm thông tin cá nhân</Text>
 
- 
         <TouchableOpacity style={styles.inputField} onPress={openDatePicker}>
           <Text style={[styles.inputText, !birthday && styles.placeholderText]}>{birthday || "Sinh nhật"}</Text>
           <Ionicons name="calendar-outline" size={24} color="#555" />
         </TouchableOpacity>
-
 
         <TouchableOpacity style={styles.inputField} onPress={openGenderPicker}>
           <Text style={[styles.inputText, !gender && styles.placeholderText]}>{gender || "Giới tính"}</Text>
           <Ionicons name="chevron-down" size={24} color="#555" />
         </TouchableOpacity>
       </View>
-
 
       <TouchableOpacity
         style={[styles.continueButton, !isFormValid || isLoading ? {} : styles.continueButtonActive]}
@@ -180,7 +179,6 @@ export default function PersonalInfoScreen({ navigation }) {
       >
         {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.continueButtonText}>Tiếp tục</Text>}
       </TouchableOpacity>
-
 
       <Modal
         transparent={true}
@@ -196,9 +194,7 @@ export default function PersonalInfoScreen({ navigation }) {
             </View>
 
             <View style={styles.datePickerContainer}>
-
               <View style={styles.selectionHighlight} />
-
 
               <View style={styles.pickerColumnContainer}>
                 <ScrollView
@@ -275,7 +271,6 @@ export default function PersonalInfoScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-
 
       <Modal
         transparent={true}

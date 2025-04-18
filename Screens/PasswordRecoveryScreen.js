@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import {
   View,
@@ -14,7 +16,6 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import { useAuth } from "../context/AuthContext"
 
 const PasswordRecoveryScreen = ({ navigation }) => {
-
   const [email, setEmail] = useState("")
   const { requestPasswordReset } = useAuth()
   const [isLoading, setIsLoading] = useState(false)

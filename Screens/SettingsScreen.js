@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, SafeAreaView, ScrollView, Alert } from "react-native"
 import { Ionicons, Feather } from "@expo/vector-icons"

@@ -137,21 +137,20 @@ export default function ProfileScreen({ navigation, route }) {
           <Text style={styles.buttonText}>Chỉnh sửa</Text>
         </TouchableOpacity>
         <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem}  onPress={() => navigation.navigate("MessagesScreen")}>
-                  <Ionicons name="chatbubble-outline" size={24} color="#888" />
-                  
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
-                  <Ionicons name="people" size={24} color="#888" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem}>
-                  <Ionicons name="time-outline" size={24} color="#888" />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-                  <Ionicons name="person-outline" size={24} color="#0068FF"  />
-                  <Text style={styles.activeNavText}>Hồ sơ</Text>
-                </TouchableOpacity>
-              </View>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MessagesScreen")}>
+            <Ionicons name="chatbubble-outline" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
+            <Ionicons name="people" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Ionicons name="time-outline" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
+            <Ionicons name="person-outline" size={24} color="#0068FF" />
+            <Text style={styles.activeNavText}>Hồ sơ</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
@@ -166,23 +165,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomNav: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 0.5,
-    borderTopColor: '#333',
-    backgroundColor: '#1A1A1A',
-    marginTop: 100
+    borderTopColor: "#333",
+    backgroundColor: "#1A1A1A",
+    marginTop: 100,
   },
   navItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 8,
   },
   activeNavItem: {
     borderTopWidth: 2,
-    borderTopColor: '#0068FF',
+    borderTopColor: "#0068FF",
   },
   activeNavText: {
-    color: '#0068FF',
+    color: "#0068FF",
     fontSize: 12,
     marginTop: 2,
   },
