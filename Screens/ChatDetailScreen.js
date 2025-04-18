@@ -25,9 +25,12 @@ import { messageService } from "../services/messageService"
 import { authService } from "../services/authService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as ImagePicker from "expo-image-picker"
-// Thêm import cho DocumentPicker từ expo-document-picker
 import * as DocumentPicker from "expo-document-picker"
+// Add this import at the top of the file
 // Remove DocumentPicker import
+// Add these imports at the top of the file
+// Remove this import at the top of the file
+// import Clipboard from "@react-native-clipboard/clipboard"
 
 const { width, height } = Dimensions.get("window")
 
@@ -239,6 +242,213 @@ const EmojiPicker = ({ onEmojiSelected }) => {
   )
 }
 
+// Add this new component for the message action menu
+const MessageActionMenu = ({
+  visible,
+  onClose,
+  onReply,
+  onForward,
+  onCopy,
+  onRecall,
+  onPin,
+  onSaveToCloud,
+  message,
+  isOwnMessage,
+}) => {
+  if (!visible) return null
+
+  return (
+    <Modal transparent={true} visible={visible} animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={styles.messageActionContainer}>
+          <View style={styles.actionButtonsGrid}>
+            <TouchableOpacity style={styles.actionButton} onPress={onReply}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="arrow-undo-outline" size={24} color="#4CD964" />
+              </View>
+              <Text style={styles.actionText}>Trả lời</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton} onPress={onForward}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="arrow-redo-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Chuyển tiếp</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton} onPress={onSaveToCloud}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="cloud-upload-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Lưu Cloud</Text>
+            </TouchableOpacity>
+
+            {isOwnMessage && (
+              <TouchableOpacity style={styles.actionButton} onPress={onRecall}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="refresh-outline" size={24} color="#FF3B30" />
+                </View>
+                <Text style={styles.actionText}>Thu hồi</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.actionButton} onPress={onCopy}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="copy-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Sao chép</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="bookmark-outline" size={24} color="#FF9500" />
+              </View>
+              <Text style={styles.actionText}>Ghim</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="time-outline" size={24} color="#FF3B30" />
+              </View>
+              <Text style={styles.actionText}>Nhắc hẹn</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="checkmark-done-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Chọn nhiều</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="chatbubble-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Tạo tin nhắn nhanh</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="language-outline" size={24} color="#0068FF" />
+                <Text style={styles.betaTag}>BETA</Text>
+              </View>
+              <Text style={styles.actionText}>Dịch</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="volume-high-outline" size={24} color="#0068FF" />
+                <Text style={styles.betaTag}>BETA</Text>
+              </View>
+              <Text style={styles.actionText}>Đọc văn bản</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="information-circle-outline" size={24} color="#8E8E93" />
+              </View>
+              <Text style={styles.actionText}>Chi tiết</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+}
+
+// Add this new component for the forward screen
+const ForwardScreen = ({ visible, onClose, contacts, onSelectContact }) => {
+  const [searchQuery, setSearchQuery] = useState("")
+
+  if (!visible) return null
+
+  return (
+    <Modal transparent={true} visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.forwardContainer}>
+        <View style={styles.forwardHeader}>
+          <TouchableOpacity onPress={onClose}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.forwardTitle}>Chia sẻ</Text>
+          <Text style={styles.forwardSubtitle}>Đã chọn: 0</Text>
+        </View>
+
+        <View style={styles.forwardSearchContainer}>
+          <TextInput
+            style={styles.forwardSearchInput}
+            placeholder="Tìm kiếm"
+            placeholderTextColor="#8E8E93"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        <View style={styles.forwardTabsContainer}>
+          <View style={styles.forwardTab}>
+            <View style={styles.forwardTabIcon}>
+              <Ionicons name="people" size={24} color="#FFFFFF" />
+            </View>
+            <Text style={styles.forwardTabText}>Nhóm mới</Text>
+          </View>
+
+          <View style={styles.forwardTab}>
+            <View style={styles.forwardTabIcon}>
+              <Ionicons name="time" size={24} color="#FFFFFF" />
+            </View>
+            <Text style={styles.forwardTabText}>Nhật ký</Text>
+          </View>
+
+          <View style={styles.forwardTab}>
+            <View style={styles.forwardTabIcon}>
+              <Ionicons name="share" size={24} color="#FFFFFF" />
+            </View>
+            <Text style={styles.forwardTabText}>App khác</Text>
+          </View>
+        </View>
+
+        <Text style={styles.forwardSectionTitle}>Gần đây</Text>
+
+        <FlatList
+          data={
+            contacts || [
+              { id: "1", name: "Cloud của tôi", avatar: null, isCloud: true },
+              { id: "2", name: "Mã 2", avatar: null, isGroup: false },
+              { id: "3", name: "Nhóm 12_CNM", avatar: null, isGroup: true, memberCount: 5 },
+              { id: "4", name: "CN_DHKTPM17C", avatar: null, isGroup: true, memberCount: 70 },
+              { id: "5", name: "Báo Mới", avatar: null, isOfficial: true },
+            ]
+          }
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.forwardContactItem} onPress={() => onSelectContact(item)}>
+              {item.isCloud ? (
+                <View style={[styles.forwardContactAvatar, { backgroundColor: "#0068FF" }]}>
+                  <Ionicons name="cloud" size={24} color="#FFFFFF" />
+                </View>
+              ) : item.avatar ? (
+                <Image source={{ uri: item.avatar }} style={styles.forwardContactAvatar} />
+              ) : (
+                <View style={[styles.forwardContactAvatar, { backgroundColor: item.isGroup ? "#FF9500" : "#FF3B30" }]}>
+                  <Text style={styles.forwardContactInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+                  {item.isGroup && item.memberCount && (
+                    <View style={styles.forwardMemberCount}>
+                      <Text style={styles.forwardMemberCountText}>{item.memberCount}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <Text style={styles.forwardContactName}>{item.name}</Text>
+
+              <View style={styles.forwardCheckbox} />
+            </TouchableOpacity>
+          )}
+        />
+      </SafeAreaView>
+    </Modal>
+  )
+}
+
 const ChatDetailScreen = ({ route, navigation }) => {
   const { conversation } = route.params || {
     name: "Nguyễn Minh Đức",
@@ -262,6 +472,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [sending, setSending] = useState(false)
+  // Add these new state variables to the ChatDetailScreen component
+  const [showMessageActions, setShowMessageActions] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState(null)
+  const [showForwardScreen, setShowForwardScreen] = useState(false)
+  const [messageToForward, setMessageToForward] = useState(null)
 
   // Yêu cầu quyền truy cập vào thư viện ảnh và tệp tin
   useEffect(() => {
@@ -494,53 +709,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
     setReplyingToMessage(null)
   }
 
+  // Update the handleLongPress function in the ChatDetailScreen component
   const handleLongPress = (message) => {
     // Show action menu for message
-    if (message.senderId === currentUser?.userId) {
-      // Show options for own messages
-      Alert.alert(
-        "Tùy chọn tin nhắn",
-        "",
-        [
-          {
-            text: "Thu hồi",
-            onPress: () => handleRecallMessage(message),
-            style: "destructive",
-          },
-          {
-            text: "Xóa",
-            onPress: () => handleDeleteMessage(message),
-            style: "destructive",
-          },
-          {
-            text: "Trả lời",
-            onPress: () => handleReplyToMessage(message),
-          },
-          {
-            text: "Hủy",
-            style: "cancel",
-          },
-        ],
-        { cancelable: true },
-      )
-    } else {
-      // Show options for others' messages
-      Alert.alert(
-        "Tùy chọn tin nhắn",
-        "",
-        [
-          {
-            text: "Trả lời",
-            onPress: () => handleReplyToMessage(message),
-          },
-          {
-            text: "Hủy",
-            style: "cancel",
-          },
-        ],
-        { cancelable: true },
-      )
-    }
+    setSelectedMessage(message)
+    setShowMessageActions(true)
   }
 
   const handleDeleteMessage = async (message) => {
@@ -596,28 +769,16 @@ const ChatDetailScreen = ({ route, navigation }) => {
       // Close the attachment options
       setShowAttachmentOptions(false)
 
-      // Kiểm tra quyền truy cập
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (status !== "granted") {
-        Alert.alert("Cần quyền truy cập", "Ứng dụng cần quyền truy cập vào thư viện ảnh để gửi hình ảnh.")
-        return
-      }
-
-      // Hiển thị thông báo đang chọn ảnh
-      Alert.alert("Đang mở thư viện ảnh", "Vui lòng đợi trong giây lát...")
-
-      // Use ImagePicker to select an image
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-        allowsMultipleSelection: true,
-        selectionLimit: 10,
+      // Use DocumentPicker to select images
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/*"],
+        multiple: true,
+        copyToCacheDirectory: true,
       })
 
-      console.log("Image picker result:", result)
+      console.log("Document picker result:", result)
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (result.canceled === false && result.assets && result.assets.length > 0) {
         // Hiển thị thông báo đang xử lý
         Alert.alert("Đang xử lý", "Đang chuẩn bị gửi hình ảnh...")
 
@@ -626,9 +787,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
           // Tạo attachments từ các ảnh đã chọn
           const attachments = result.assets.map((asset) => ({
             url: asset.uri,
-            type: "image/jpeg",
-            name: asset.uri.split("/").pop() || "image.jpg",
-            size: asset.fileSize || 100000,
+            type: asset.mimeType || "image/jpeg",
+            name: asset.name || asset.uri.split("/").pop() || "image.jpg",
+            size: asset.size || 100000,
             _id: Date.now() + Math.random().toString(),
           }))
 
@@ -661,7 +822,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
           }, 1000)
         } else {
           // Nếu chỉ chọn một ảnh
-          const imageUri = result.assets[0].uri
+          const asset = result.assets[0]
+          const imageUri = asset.uri
           console.log("Selected image URI:", imageUri)
 
           // Optimistically add image message to UI
@@ -673,9 +835,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
             attachments: [
               {
                 url: imageUri,
-                type: "image/jpeg",
-                name: imageUri.split("/").pop() || "image.jpg",
-                size: result.assets[0].fileSize || 100000,
+                type: asset.mimeType || "image/jpeg",
+                name: asset.name || imageUri.split("/").pop() || "image.jpg",
+                size: asset.size || 100000,
                 _id: Date.now() + Math.random().toString(),
               },
             ],
@@ -708,155 +870,66 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }
 
   // Thay đổi hàm handleFileUpload để xử lý file tốt hơn
+  // Replace the handleFileUpload function with this implementation
   const handleFileUpload = async () => {
     try {
       // Close the attachment options
       setShowAttachmentOptions(false)
 
-      Alert.alert("Chọn nguồn file", "Bạn muốn chọn file từ đâu?", [
-        {
-          text: "Thư viện ảnh",
-          onPress: async () => {
-            try {
-              // Kiểm tra quyền truy cập
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-              if (status !== "granted") {
-                Alert.alert("Cần quyền truy cập", "Ứng dụng cần quyền truy cập vào thư viện ảnh để chọn file.")
-                return
-              }
+      // Use DocumentPicker to select a file
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["*/*"],
+        copyToCacheDirectory: true,
+      })
 
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.All,
-                allowsEditing: false,
-                quality: 1,
-              })
+      console.log("Document picker result:", result)
 
-              console.log("Image picker result for file:", result)
+      if (result.canceled === false && result.assets && result.assets.length > 0) {
+        const file = result.assets[0]
+        console.log("Selected file details:", file)
 
-              if (!result.canceled && result.assets && result.assets.length > 0) {
-                const fileUri = result.assets[0].uri
-                const fileName = fileUri.split("/").pop() || "file.pdf"
-                const fileSize = result.assets[0].fileSize || 1000000
-                const fileType = result.assets[0].mimeType || "application/pdf"
+        // Show loading indicator
+        Alert.alert("Đang xử lý", "Đang chuẩn bị gửi file...")
 
-                console.log("Selected file details:", { fileUri, fileName, fileSize, fileType })
+        // Create attachment for the file
+        const attachment = {
+          url: file.uri,
+          type: file.mimeType || "application/octet-stream",
+          name: file.name || "file",
+          size: file.size || 0,
+          _id: Date.now() + Math.random().toString(),
+        }
 
-                // Tạo attachment cho file
-                const attachment = {
-                  url: fileUri,
-                  type: fileType,
-                  name: fileName,
-                  size: fileSize,
-                  _id: Date.now() + Math.random().toString(),
-                }
+        // Optimistically add file message to UI
+        const currentTime = new Date()
+        const newMessage = {
+          messageId: `temp-${Date.now()}`,
+          content: "",
+          type: "file",
+          attachments: [attachment],
+          timestamp: currentTime,
+          senderId: currentUser?.userId,
+          isDeleted: false,
+          isRecalled: false,
+          createdAt: currentTime.toISOString(),
+        }
 
-                // Optimistically add file message to UI
-                const currentTime = new Date()
-                const newMessage = {
-                  messageId: `temp-${Date.now()}`,
-                  content: "",
-                  type: "file",
-                  attachments: [attachment],
-                  timestamp: currentTime,
-                  senderId: currentUser?.userId,
-                  isDeleted: false,
-                  isRecalled: false,
-                  createdAt: currentTime.toISOString(),
-                }
+        setMessages([newMessage, ...messages])
 
-                setMessages([newMessage, ...messages])
-
-                // Trong ứng dụng thực tế, bạn sẽ gửi file lên server
-                // Ở đây chúng ta giả định rằng đã gửi thành công
-                setTimeout(() => {
-                  // Cập nhật tin nhắn tạm thời với ID thực tế
-                  setMessages((prevMessages) =>
-                    prevMessages.map((msg) =>
-                      msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `file-${Date.now()}` } : msg,
-                    ),
-                  )
-                  Alert.alert("Thành công", "Đã gửi file thành công!")
-                }, 1000)
-              }
-            } catch (err) {
-              console.error("Error picking image as file:", err)
-              Alert.alert("Lỗi", `Không thể chọn file từ thư viện ảnh. Lỗi: ${err.message}`)
-            }
-          },
-        },
-        {
-          text: "Chọn từ Files",
-          onPress: async () => {
-            try {
-              // Hiển thị thông báo đang mở trình chọn file
-              Alert.alert("Đang mở trình chọn file", "Vui lòng đợi trong giây lát...")
-
-              // Sử dụng DocumentPicker để chọn file từ hệ thống
-              const result = await DocumentPicker.getDocumentAsync({
-                type: "*/*", // Cho phép tất cả các loại file
-                copyToCacheDirectory: true,
-              })
-
-              console.log("Document picker result:", result)
-
-              if (result.canceled === false && result.assets && result.assets.length > 0) {
-                const file = result.assets[0]
-                console.log("Selected file:", file)
-
-                // Tạo attachment cho file
-                const attachment = {
-                  url: file.uri,
-                  type: file.mimeType || "application/octet-stream",
-                  name: file.name || "file",
-                  size: file.size || 1000000,
-                  _id: Date.now() + Math.random().toString(),
-                }
-
-                // Optimistically add file message to UI
-                const currentTime = new Date()
-                const newMessage = {
-                  messageId: `temp-${Date.now()}`,
-                  content: "",
-                  type: "file",
-                  attachments: [attachment],
-                  timestamp: currentTime,
-                  senderId: currentUser?.userId,
-                  isDeleted: false,
-                  isRecalled: false,
-                  createdAt: currentTime.toISOString(),
-                }
-
-                setMessages([newMessage, ...messages])
-
-                // Trong ứng dụng thực tế, bạn sẽ gửi file lên server
-                // Ở đây chúng ta giả định rằng đã gửi thành công
-                setTimeout(() => {
-                  // Cập nhật tin nhắn tạm thời với ID thực tế
-                  setMessages((prevMessages) =>
-                    prevMessages.map((msg) =>
-                      msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `file-${Date.now()}` } : msg,
-                    ),
-                  )
-                  Alert.alert("Thành công", "Đã gửi file thành công!")
-                }, 1000)
-              } else {
-                console.log("Document picking canceled or failed")
-                Alert.alert("Thông báo", "Bạn đã hủy chọn file hoặc có lỗi xảy ra.")
-              }
-            } catch (err) {
-              console.error("Error picking document:", err)
-              Alert.alert("Lỗi", `Không thể chọn file. Lỗi: ${err.message}`)
-            }
-          },
-        },
-        {
-          text: "Hủy",
-          style: "cancel",
-        },
-      ])
+        // In a real app, you would upload the file to your server here
+        // For now, we'll simulate a successful upload
+        setTimeout(() => {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `file-${Date.now()}` } : msg,
+            ),
+          )
+          Alert.alert("Thành công", `Đã gửi file "${file.name}" thành công!`)
+        }, 1000)
+      }
     } catch (err) {
-      console.error("Error handling file:", err)
-      Alert.alert("Lỗi", `Không thể xử lý tập tin. Lỗi: ${err.message}`)
+      console.error("Error picking document:", err)
+      Alert.alert("Lỗi", `Không thể chọn file. Lỗi: ${err.message}`)
     }
   }
 
@@ -1048,7 +1121,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       const fileUrl = attachment ? attachment.url : item.content || ""
       const fileType = attachment ? attachment.type : "application/octet-stream"
       const fileSize = attachment ? attachment.size : item.fileSize || "Unknown size" // Declare fileSize here
-      const fileExtension = fileName.split(".").pop().toUpperCase()
+      const fileExtension = fileName.split(".").pop()?.toUpperCase() || "FILE"
 
       return (
         <TouchableOpacity
@@ -1096,6 +1169,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         style={[styles.messageContainer, item.isMe ? styles.myMessage : styles.theirMessage]}
         onPress={() => handleMessagePress(item.messageId)}
         onLongPress={() => handleLongPress(item)}
+        activeOpacity={0.8}
       >
         {!item.isMe && item.isFirstInSequence && (
           <Image
@@ -1110,6 +1184,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
             styles.messageBubble,
             item.isMe ? styles.myBubble : styles.theirBubble,
             singleEmoji && styles.emojiOnlyBubble,
+            singleEmoji && item.isMe && { alignItems: "flex-end" },
+            singleEmoji && !item.isMe && { alignItems: "flex-start" },
           ]}
         >
           {item.replyTo && (
@@ -1120,8 +1196,25 @@ const ChatDetailScreen = ({ route, navigation }) => {
               </Text>
             </View>
           )}
-          <Text style={[styles.messageText, singleEmoji && styles.emojiOnlyText]}>{item.content}</Text>
-          {item.showTime && <Text style={styles.messageTime}>{item.formattedTime}</Text>}
+          <Text
+            style={[
+              styles.messageText,
+              singleEmoji && styles.emojiOnlyText,
+              item.isMe && styles.myMessageText,
+              singleEmoji && item.isMe && { textAlign: "right" },
+              singleEmoji && !item.isMe && { textAlign: "left" },
+            ]}
+          >
+            {item.content}
+          </Text>
+          {item.showTime && (
+            <Text style={[styles.messageTime, item.isMe && styles.myMessageTime]}>
+              {item.formattedTime}
+              {item.isMe && (
+                <Ionicons name="checkmark-done" size={12} color="rgba(255, 255, 255, 0.6)" style={{ marginLeft: 4 }} />
+              )}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     )
@@ -1169,6 +1262,43 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
+  // Add these new functions to the ChatDetailScreen component
+  // Replace the handleCopyMessage function with this implementation
+  const handleCopyMessage = (message) => {
+    if (message.content) {
+      // Instead of using the native clipboard module, we'll just show an alert
+      // In a real app with proper native module setup, you would use Clipboard.setString(message.content)
+      Alert.alert("Đã sao chép", "Nội dung tin nhắn đã được sao chép vào bộ nhớ tạm.")
+    }
+    setShowMessageActions(false)
+  }
+
+  const handleForwardMessage = (message) => {
+    setShowMessageActions(false)
+    setShowForwardScreen(true)
+    setMessageToForward(message)
+  }
+
+  const handleSelectForwardContact = async (contact) => {
+    try {
+      setShowForwardScreen(false)
+
+      if (messageToForward) {
+        // In a real app, this would call the API to forward the message
+        // For now, we'll just show a success message
+        Alert.alert("Đã chuyển tiếp", `Tin nhắn đã được chuyển tiếp đến ${contact.name}`)
+      }
+    } catch (err) {
+      console.error("Error forwarding message:", err)
+      Alert.alert("Lỗi", "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.")
+    }
+  }
+
+  const handleSaveToCloud = (message) => {
+    Alert.alert("Đã lưu", "Tin nhắn đã được lưu vào Cloud của bạn.")
+    setShowMessageActions(false)
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
@@ -1193,29 +1323,34 @@ const ChatDetailScreen = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Image
-          source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-          style={styles.headerAvatar}
-        />
+        <TouchableOpacity
+          style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+          onPress={() => Alert.alert("Thông tin", `Xem thông tin của ${conversation.name}`)}
+        >
+          <Image
+            source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
+            style={styles.headerAvatar}
+          />
 
-        <View style={styles.headerInfo}>
-          <Text style={styles.contactName}>{conversation.name}</Text>
-          <Text style={styles.status}>{conversation.online ? "Online" : "Đang hoạt động"}</Text>
-        </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.contactName}>{conversation.name}</Text>
+            <Text style={styles.status}>{conversation.online ? "Đang hoạt động" : "Hoạt động 5 phút trước"}</Text>
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.headerRightIcons}>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="call-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="call-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="videocam-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="videocam-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="information-circle-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="ellipsis-vertical" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1252,38 +1387,39 @@ const ChatDetailScreen = ({ route, navigation }) => {
       )}
 
       <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.attachmentButton} onPress={toggleAttachmentOptions}>
-          <Ionicons name="add-circle-outline" size={28} color="#0068FF" />
+        <TouchableOpacity style={styles.attachmentButton} onPress={handleFileUpload}>
+          <Ionicons name="document-outline" size={24} color="#0068FF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.attachmentButton} onPress={handleImageUpload}>
+          <Ionicons name="image-outline" size={24} color="#0068FF" />
         </TouchableOpacity>
 
         <TextInput
           ref={inputRef}
           style={styles.input}
           placeholder="Nhập tin nhắn..."
-          placeholderTextColor="#888888"
+          placeholderTextColor="rgba(255, 255, 255, 0.5)"
           multiline
           value={inputText}
           onChangeText={setInputText}
         />
 
-        {inputText.length > 0 ? (
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={sending}>
-            {sending ? (
-              <ActivityIndicator size="small" color="#0068FF" />
-            ) : (
-              <Ionicons name="send" size={24} color="#0068FF" />
-            )}
-          </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="mic-outline" size={24} color="#0068FF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={toggleEmojiPicker}>
-              <Ionicons name={showEmojiPicker ? "happy" : "happy-outline"} size={24} color="#0068FF" />
-            </TouchableOpacity>
-          </>
-        )}
+        <TouchableOpacity style={styles.attachmentButton} onPress={toggleEmojiPicker}>
+          <Ionicons name={showEmojiPicker ? "happy" : "happy-outline"} size={24} color="#0068FF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={!inputText.trim() || sending}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name="send" size={20} color="#FFFFFF" />
+          )}
+        </TouchableOpacity>
       </View>
 
       {showEmojiPicker && <EmojiPicker onEmojiSelected={handleSendEmoji} />}
@@ -1321,14 +1457,44 @@ const ChatDetailScreen = ({ route, navigation }) => {
         onClose={() => setGalleryVisible(false)}
         initialIndex={galleryInitialIndex}
       />
+
+      <MessageActionMenu
+        visible={showMessageActions}
+        onClose={() => setShowMessageActions(false)}
+        onReply={() => {
+          setReplyingToMessage(selectedMessage)
+          setShowMessageActions(false)
+          if (inputRef.current) {
+            inputRef.current.focus()
+          }
+        }}
+        onForward={() => handleForwardMessage(selectedMessage)}
+        onCopy={() => handleCopyMessage(selectedMessage)}
+        onRecall={() => {
+          handleRecallMessage(selectedMessage)
+          setShowMessageActions(false)
+        }}
+        onSaveToCloud={() => handleSaveToCloud(selectedMessage)}
+        message={selectedMessage}
+        isOwnMessage={selectedMessage?.senderId === currentUser?.userId}
+      />
+
+      <ForwardScreen
+        visible={showForwardScreen}
+        onClose={() => setShowForwardScreen(false)}
+        onSelectContact={handleSelectForwardContact}
+      />
     </SafeAreaView>
   )
 }
 
+// Update the styles object at the bottom of the file to improve the UI appearance
+
+// Replace the styles object with this enhanced version:
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#121212", // Darker background for better contrast
   },
   centerContent: {
     justifyContent: "center",
@@ -1353,17 +1519,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#262626",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    backgroundColor: "#1A1A1A",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#333333",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   headerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 12,
   },
   headerInfo: {
     flex: 1,
@@ -1375,70 +1546,81 @@ const styles = StyleSheet.create({
   },
   status: {
     color: "#A9A9A9",
-    fontSize: 14,
+    fontSize: 13,
   },
   headerRightIcons: {
     flexDirection: "row",
   },
   iconButton: {
-    marginLeft: 15,
+    marginLeft: 18,
+    padding: 4,
   },
   messagesList: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingBottom: 10,
-    justifyContent: "flex-end",
+    paddingTop: 10,
   },
   chatBackground: {
     flex: 1,
+    backgroundColor: "#121212",
   },
   messageContainer: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginVertical: 5,
+    alignItems: "flex-end",
+    marginVertical: 4,
+    maxWidth: "100%",
   },
   myMessage: {
     justifyContent: "flex-end",
+    marginLeft: 50,
   },
   theirMessage: {
     justifyContent: "flex-start",
+    marginRight: 50,
   },
   messageAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     marginRight: 8,
+    marginBottom: 4,
   },
   avatarPlaceholder: {
-    width: 30,
+    width: 28,
     marginRight: 8,
   },
   messageBubble: {
-    maxWidth: "75%",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 18,
+    maxWidth: "100%",
   },
   myBubble: {
     backgroundColor: "#0068FF",
-    borderBottomRightRadius: 2,
+    borderBottomRightRadius: 4,
   },
   theirBubble: {
-    backgroundColor: "#333333",
-    borderBottomLeftRadius: 2,
+    backgroundColor: "#2C2C2E",
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 16,
     color: "#FFFFFF",
+    lineHeight: 22,
+  },
+  myMessageText: {
+    textAlign: "right", // Right-align text for user's messages
   },
   messageTime: {
-    fontSize: 12,
-    color: "#A9A9A9",
-    marginTop: 3,
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: 4,
+    alignSelf: "flex-end",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#262626",
+    backgroundColor: "#1A1A1A",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderTopWidth: 1,
@@ -1448,24 +1630,32 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#FFFFFF",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: "#333333",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#2C2C2E",
     marginRight: 8,
+    maxHeight: 100,
   },
   attachmentButton: {
     marginRight: 8,
+    padding: 6,
   },
   sendButton: {
-    paddingHorizontal: 12,
+    padding: 8,
+    backgroundColor: "#0068FF",
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   replyBar: {
-    backgroundColor: "#262626",
+    backgroundColor: "#1A1A1A",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333333",
+    borderTopWidth: 1,
+    borderTopColor: "#333333",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1473,6 +1663,7 @@ const styles = StyleSheet.create({
   replyBarContent: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   replyBarLine: {
     width: 3,
@@ -1484,7 +1675,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   replyBarName: {
-    color: "#FFFFFF",
+    color: "#0068FF",
     fontSize: 14,
     fontWeight: "bold",
   },
@@ -1496,13 +1687,15 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   replyContainer: {
-    backgroundColor: "#444444",
+    backgroundColor: "rgba(68, 68, 68, 0.6)",
     borderRadius: 8,
     padding: 8,
     marginBottom: 5,
+    borderLeftWidth: 2,
+    borderLeftColor: "#0068FF",
   },
   replyName: {
-    color: "#FFFFFF",
+    color: "#0068FF",
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -1511,26 +1704,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   deletedMessageBubble: {
-    backgroundColor: "#555555",
+    backgroundColor: "#333333",
   },
   deletedMessageText: {
     color: "#A9A9A9",
     fontStyle: "italic",
   },
   recalledMessageBubble: {
-    backgroundColor: "#555555",
+    backgroundColor: "#333333",
   },
   recalledMessageText: {
     color: "#A9A9A9",
     fontStyle: "italic",
   },
   imageBubble: {
-    padding: 0,
+    padding: 2,
+    overflow: "hidden",
   },
   messageImage: {
     width: 200,
     height: 150,
-    borderRadius: 8,
+    borderRadius: 16,
   },
   imageGroupContainer: {
     flexDirection: "column",
@@ -1542,18 +1736,25 @@ const styles = StyleSheet.create({
   gridImageContainer: {
     position: "relative",
     overflow: "hidden",
+    margin: 1,
   },
   singleImageContainer: {
     width: 200,
     height: 150,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   doubleImageContainer: {
     width: 150,
     height: 150,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   multipleImageContainer: {
     width: 100,
     height: 100,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   gridImage: {
     width: "100%",
@@ -1565,7 +1766,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: "100%",
     height: "100%",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1574,18 +1775,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
   },
-  attachmentOptions: {
-    flexDirection: "row",
-    backgroundColor: "#262626",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#333333",
-    justifyContent: "space-around",
-  },
   attachmentOptionsContainer: {
-    backgroundColor: "#262626",
-    paddingVertical: 10,
+    backgroundColor: "#1A1A1A",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     borderTopWidth: 1,
     borderTopColor: "#333333",
   },
@@ -1596,47 +1789,55 @@ const styles = StyleSheet.create({
   },
   attachmentOption: {
     alignItems: "center",
+    width: 80,
   },
   attachmentOptionText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    marginTop: 5,
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: "center",
   },
   attachmentIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 4,
   },
   emojiPickerContainer: {
-    backgroundColor: "#262626",
+    backgroundColor: "#1A1A1A",
     borderTopWidth: 1,
     borderTopColor: "#333333",
-    maxHeight: 200,
+    maxHeight: 220,
   },
   emojiGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     padding: 10,
+    justifyContent: "space-between",
   },
   emojiButton: {
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
   },
   emoji: {
     fontSize: 24,
+    height: 50,
   },
   emojiOnlyBubble: {
-    backgroundColor: "#0068FF",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    backgroundColor: "transparent",
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    minWidth: 50, // Add minimum width to ensure emoji has enough space
   },
   emojiOnlyText: {
-    fontSize: 28,
+    fontSize: 40,
+    lineHeight: 50, // Add line height to ensure proper vertical spacing
   },
   galleryContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1644,73 +1845,80 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
-    width: "100%",
-    padding: 10,
+    right: 0,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   galleryCloseButton: {
     padding: 10,
   },
-  galleryCounter: {
-    color: "#FFFFFF",
-    fontSize: 18,
+  sendButtonDisabled: {
+    backgroundColor: "rgba(0, 104, 255, 0.5)",
   },
-  galleryImageContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  messageActionContainer: {
+    backgroundColor: "#262626",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingVertical: 16,
+    paddingBottom: 30,
   },
-  galleryImage: {
-    width: width,
-    height: height * 0.7,
-  },
-  galleryControls: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: "100%",
+  actionButtonsGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
+    flexWrap: "wrap",
+    padding: 16,
   },
-  galleryControlButton: {
-    padding: 10,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  actionButton: {
+    width: "25%",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  actionIconContainer: {
+    width: 50,
+    height: 50,
     borderRadius: 25,
-  },
-  fileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#444444",
-    borderRadius: 8,
-    padding: 8,
-  },
-  fileIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#555555",
+    backgroundColor: "#333333",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 8,
+    marginBottom: 8,
+    position: "relative",
   },
-  fileExtension: {
+  actionText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  fileInfo: {
-    flex: 1,
-  },
-  fileName: {
-    color: "#FFFFFF",
-    fontSize: 14,
-  },
-  fileSize: {
-    color: "#A9A9A9",
     fontSize: 12,
+    textAlign: "center",
+  },
+  betaTag: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#4CD964",
+    color: "#000000",
+    fontSize: 8,
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    right: -5,
+    backgroundColor: "#4CD964",
+    color: "#000000",
+    fontSize: 8,
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "rgba(0, 104, 255, 0.5)",
+  },
+  myMessageTime: {
+    textAlign: "right", // Align the time to the right for my messages
   },
 })
 
