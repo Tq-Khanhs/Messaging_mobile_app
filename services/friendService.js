@@ -66,12 +66,25 @@ export const friendService = {
       throw error
     }
   },
+
+  // Withdraw/cancel a friend request
   withdrawFriendRequest: async (requestId) => {
     try {
       const response = await api.delete(`/friends/requests/${requestId}`)
       return response.data
     } catch (error) {
       console.error("Withdraw friend request error:", error)
+      throw error
+    }
+  },
+
+  // Remove a friend
+  removeFriend: async (friendId) => {
+    try {
+      const response = await api.delete(`/friends/${friendId}`)
+      return response.data
+    } catch (error) {
+      console.error("Remove friend error:", error)
       throw error
     }
   },

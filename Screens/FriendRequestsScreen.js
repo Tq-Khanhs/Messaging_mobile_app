@@ -11,14 +11,19 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { friendService } from "../services/friendService"
+import { messageService } from "../services/messageService"
 
 const FriendRequestsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("received")
   const [receivedRequests, setReceivedRequests] = useState([])
   const [sentRequests, setSentRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -30,111 +35,139 @@ const FriendRequestsScreen = ({ navigation }) => {
       setLoading(true)
       setError(null)
 
-      // In a real app, these would be API calls
-      // For demo purposes, we'll use mock data
-      const mockReceivedRequests = [
-        {
-          id: "1",
-          name: "Nguyễn Văn Chi",
-          avatar: require("../assets/icon.png"),
-          message: "Muốn kết bạn",
-          timestamp: new Date(),
-        },
-        {
-          id: "2",
-          name: "Diana",
-          avatar: require("../assets/icon.png"),
-          message: "Muốn kết bạn",
-          timestamp: new Date(),
-        },
-        {
-          id: "3",
-          name: "Hạnh Sino",
-          avatar: require("../assets/icon.png"),
-          message: "Muốn kết bạn",
-          timestamp: new Date(),
-        },
-      ]
+      // Fetch received friend requests
+      const receivedData = await friendService.getReceivedFriendRequests()
+      setReceivedRequests(receivedData || [])
 
-      const mockSentRequests = [
-        {
-          id: "4",
-          name: "Itel",
-          avatar: null,
-          message: "Tìm kiếm số điện thoại",
-          timestamp: new Date(Date.now() - 60000), // 1 minute ago
-        },
-      ]
-
-      setReceivedRequests(mockReceivedRequests)
-      setSentRequests(mockSentRequests)
+      // Fetch sent friend requests
+      const sentData = await friendService.getSentFriendRequests()
+      setSentRequests(sentData || [])
     } catch (err) {
       console.error("Error fetching friend requests:", err)
       setError("Không thể tải lời mời kết bạn. Vui lòng thử lại sau.")
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  const handleAcceptRequest = async (requestId) => {
+  const onRefresh = () => {
+    setRefreshing(true)
+    fetchFriendRequests()
+  }
+
+  const handleAcceptRequest = async (request) => {
     try {
       setLoading(true)
-      // In a real app, this would be an API call
-      // await friendService.respondToFriendRequest(requestId, 'accept');
+  
+      await friendService.respondToFriendRequest(request.requestId, "accept")
 
-      // Update local state
-      setReceivedRequests(receivedRequests.filter((request) => request.id !== requestId))
+      try {
+        await messageService.getOrStartConversation(request.sender.userId)
+        console.log("Conversation created successfully with user:", request.sender.userId)
+      } catch (convErr) {
+        console.error("Error creating conversation:", convErr)
+      }
+
+      setReceivedRequests(receivedRequests.filter((req) => req.requestId !== request.requestId))
+      Alert.alert(
+        "Thành công",
+        `Đã chấp nhận lời mời kết bạn từ ${request.sender?.fullName || "người dùng"} và tạo cuộc trò chuyện`,
+      )
     } catch (err) {
       console.error("Error accepting friend request:", err)
+      Alert.alert("Lỗi", "Không thể chấp nhận lời mời kết bạn. Vui lòng thử lại.")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRejectRequest = async (requestId) => {
+  const handleRejectRequest = async (request) => {
     try {
       setLoading(true)
-      // In a real app, this would be an API call
-      // await friendService.respondToFriendRequest(requestId, 'reject');
+      await friendService.respondToFriendRequest(request.requestId, "reject")
 
       // Update local state
-      setReceivedRequests(receivedRequests.filter((request) => request.id !== requestId))
+      setReceivedRequests(receivedRequests.filter((req) => req.requestId !== request.requestId))
+      Alert.alert("Thành công", `Đã từ chối lời mời kết bạn từ ${request.sender?.fullName || "người dùng"}`)
     } catch (err) {
       console.error("Error rejecting friend request:", err)
+      Alert.alert("Lỗi", "Không thể từ chối lời mời kết bạn. Vui lòng thử lại.")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleWithdrawRequest = async (requestId) => {
+  const handleWithdrawRequest = async (request) => {
     try {
-      setLoading(true)
-      // In a real app, this would be an API call
-      // await friendService.withdrawFriendRequest(requestId);
+      Alert.alert(
+        "Thu hồi lời mời",
+        `Bạn có chắc muốn thu hồi lời mời kết bạn đã gửi đến ${request.receiver?.fullName || "người dùng"}?`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
+          },
+          {
+            text: "Thu hồi",
+            onPress: async () => {
+              setLoading(true)
+              await friendService.withdrawFriendRequest(request.requestId)
 
-      // Update local state
-      setSentRequests(sentRequests.filter((request) => request.id !== requestId))
+              // Update local state
+              setSentRequests(sentRequests.filter((req) => req.requestId !== request.requestId))
+              Alert.alert("Thành công", "Đã thu hồi lời mời kết bạn")
+            },
+          },
+        ],
+      )
     } catch (err) {
       console.error("Error withdrawing friend request:", err)
+      Alert.alert("Lỗi", "Không thể thu hồi lời mời kết bạn. Vui lòng thử lại.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStartChat = async (userId, fullName, avatarUrl) => {
+    try {
+      setLoading(true)
+      const conversation = await messageService.getOrStartConversation(userId)
+
+      navigation.navigate("ChatDetail", {
+        conversation: {
+          id: conversation.conversationId,
+          name: fullName,
+          avatar: avatarUrl,
+          isGroup: false,
+          online: false,
+        },
+      })
+    } catch (err) {
+      console.error("Error starting chat:", err)
+      Alert.alert("Lỗi", "Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại.")
     } finally {
       setLoading(false)
     }
   }
 
   const renderReceivedRequestItem = ({ item }) => {
-    // Regular friend request
     return (
       <View style={styles.requestItem}>
-        <Image source={item.avatar} style={styles.avatar} />
+        <Image
+          source={item.sender?.avatarUrl ? { uri: item.sender.avatarUrl } : require("../assets/icon.png")}
+          style={styles.avatar}
+        />
         <View style={styles.requestContent}>
-          <Text style={styles.requestName}>{item.name}</Text>
-          <Text style={styles.requestMessage}>{item.message}</Text>
+          <Text style={styles.requestName}>{item.sender?.fullName || "Người dùng"}</Text>
+          <Text style={styles.requestMessage}>{item.message || "Muốn kết bạn với bạn"}</Text>
+          <Text style={styles.requestTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
         </View>
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => handleRejectRequest(item.id)}>
+          <TouchableOpacity style={styles.rejectButton} onPress={() => handleRejectRequest(item)}>
             <Text style={styles.rejectButtonText}>TỪ CHỐI</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.acceptButton} onPress={() => handleAcceptRequest(item.id)}>
+          <TouchableOpacity style={styles.acceptButton} onPress={() => handleAcceptRequest(item)}>
             <Text style={styles.acceptButtonText}>ĐỒNG Ý</Text>
           </TouchableOpacity>
         </View>
@@ -143,36 +176,18 @@ const FriendRequestsScreen = ({ navigation }) => {
   }
 
   const renderSentRequestItem = ({ item }) => {
-    // Special case for "Itel" with different UI
-    if (item.name === "Itel") {
-      return (
-        <View style={styles.requestItem}>
-          <View style={[styles.avatarContainer, { backgroundColor: "#FF6B6B" }]}>
-            <Text style={styles.avatarInitial}>I</Text>
-          </View>
-          <View style={styles.requestContent}>
-            <Text style={styles.requestName}>{item.name}</Text>
-            <Text style={styles.requestMessage}>{item.message}</Text>
-            <Text style={styles.requestTime}>1 phút trước</Text>
-          </View>
-          <TouchableOpacity style={styles.withdrawButton} onPress={() => handleWithdrawRequest(item.id)}>
-            <Text style={styles.withdrawButtonText}>THU HỒI</Text>
-          </TouchableOpacity>
-        </View>
-      )
-    }
-
-    // Regular sent request
     return (
       <View style={styles.requestItem}>
-        <Image source={item.avatar || require("../assets/icon.png")} style={styles.avatar} />
+        <Image
+          source={item.receiver?.avatarUrl ? { uri: item.receiver.avatarUrl } : require("../assets/icon.png")}
+          style={styles.avatar}
+        />
         <View style={styles.requestContent}>
-          <Text style={styles.requestName}>{item.name}</Text>
-          <Text style={styles.requestTime}>
-            {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </Text>
+          <Text style={styles.requestName}>{item.receiver?.fullName || "Người dùng"}</Text>
+          <Text style={styles.requestMessage}>{item.message || "Đã gửi lời mời kết bạn"}</Text>
+          <Text style={styles.requestTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
         </View>
-        <TouchableOpacity style={styles.withdrawButton} onPress={() => handleWithdrawRequest(item.id)}>
+        <TouchableOpacity style={styles.withdrawButton} onPress={() => handleWithdrawRequest(item)}>
           <Text style={styles.withdrawButtonText}>THU HỒI</Text>
         </TouchableOpacity>
       </View>
@@ -181,29 +196,17 @@ const FriendRequestsScreen = ({ navigation }) => {
 
   const renderEmptyReceivedState = () => (
     <View style={styles.emptyContainer}>
-      <Image source={require("../assets/icon.png")} style={styles.emptyIcon} />
+      <Image source={require("../assets/empty-receive.png")} style={styles.emptyIcon} />
       <Text style={styles.emptyText}>Không có lời mời kết bạn nào</Text>
     </View>
   )
 
   const renderEmptySentState = () => (
     <View style={styles.emptyContainer}>
-      <Image source={require("../assets/icon.png")} style={styles.emptyIcon} />
+      <Image source={require("../assets/empty-send.png")} style={styles.emptyIcon} />
       <Text style={styles.emptyText}>Chưa gửi lời mời kết bạn nào</Text>
     </View>
   )
-
-  const renderOlderRequests = () => {
-    if (receivedRequests.length > 3) {
-      return (
-        <View>
-          <Text style={styles.olderRequestsHeader}>Cũ hơn</Text>
-          {/* Additional requests would be rendered here */}
-        </View>
-      )
-    }
-    return null
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,7 +228,7 @@ const FriendRequestsScreen = ({ navigation }) => {
           onPress={() => setActiveTab("received")}
         >
           <Text style={[styles.tabText, activeTab === "received" && styles.activeTabText]}>
-            Đã nhận {receivedRequests.length > 0 ? receivedRequests.length : ""}
+            Đã nhận {receivedRequests.length > 0 ? `(${receivedRequests.length})` : ""}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -233,12 +236,12 @@ const FriendRequestsScreen = ({ navigation }) => {
           onPress={() => setActiveTab("sent")}
         >
           <Text style={[styles.tabText, activeTab === "sent" && styles.activeTabText]}>
-            Đã gửi {sentRequests.length > 0 ? sentRequests.length : ""}
+            Đã gửi {sentRequests.length > 0 ? `(${sentRequests.length})` : ""}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0068FF" />
         </View>
@@ -256,14 +259,19 @@ const FriendRequestsScreen = ({ navigation }) => {
               <FlatList
                 data={receivedRequests}
                 renderItem={renderReceivedRequestItem}
-                keyExtractor={(item) => item.id}
-                ListFooterComponent={renderOlderRequests}
+                keyExtractor={(item) => item.requestId}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
               />
             ) : (
               renderEmptyReceivedState()
             )
           ) : sentRequests.length > 0 ? (
-            <FlatList data={sentRequests} renderItem={renderSentRequestItem} keyExtractor={(item) => item.id} />
+            <FlatList
+              data={sentRequests}
+              renderItem={renderSentRequestItem}
+              keyExtractor={(item) => item.requestId}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
+            />
           ) : (
             renderEmptySentState()
           )}
@@ -353,9 +361,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    
   },
   emptyIcon: {
-    width: 120,
+    width: 160,
     height: 120,
     marginBottom: 20,
     opacity: 0.5,
@@ -377,19 +386,6 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     marginRight: 12,
-  },
-  avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarInitial: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "bold",
   },
   requestContent: {
     flex: 1,
@@ -446,13 +442,6 @@ const styles = StyleSheet.create({
   withdrawButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
-  },
-  olderRequestsHeader: {
-    color: "#888",
-    fontSize: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#222",
   },
 })
 

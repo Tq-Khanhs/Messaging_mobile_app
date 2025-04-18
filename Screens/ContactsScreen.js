@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -12,39 +12,19 @@ import {
   StatusBar,
   SectionList,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { friendService } from "../services/friendService"
 
-const CONTACTS_DATA = [
-  {
-    title: "A",
-    data: [
-      { id: "1", name: "A Văn", avatar: require("../assets/icon.png") },
-      { id: "2", name: "Anh Thư", avatar: require("../assets/icon.png") },
-    ],
-  },
-  {
-    title: "B",
-    data: [
-      { id: "3", name: "Bạn Tú", avatar: require("../assets/icon.png") },
-      { id: "4", name: "Bùi Quốc Sử", avatar: require("../assets/icon.png") },
-    ],
-  },
-  {
-    title: "C",
-    data: [
-      { id: "5", name: "Ch Thụy", avatar: require("../assets/icon.png") },
-      { id: "6", name: "Chau Uyen", avatar: require("../assets/icon.png") },
-      { id: "7", name: "Chị Thảo", avatar: require("../assets/icon.png") },
-    ],
-  },
-]
+// Xóa CONTACTS_DATA mẫu và thay thế bằng state
 
 const GROUPS_DATA = [
   {
     id: "1",
     name: "Nhóm 12 _ CNM",
-    lastMessage: "Bạn: Phần backend ai thực hiện z á @All",
+    lastMessage: "Bạn: Phần backend ai th���c hiện z á @All",
     time: "30 phút",
     memberCount: 5,
     avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
@@ -67,31 +47,119 @@ const GROUPS_DATA = [
   },
 ]
 
-const SPECIAL_SECTIONS = [
-  {
-    id: "friend_requests",
-    name: "Lời mời kết bạn",
-    count: "(5)",
-    icon: "people",
-    iconColor: "#0068FF",
-    iconBgColor: "#0068FF20",
-  },
-  {
-    id: "phone_contacts",
-    name: "Danh bạ máy",
-    description: "Các liên hệ có dùng Zalo",
-    icon: "book",
-    iconColor: "#0068FF",
-    iconBgColor: "#0068FF20",
-  },
-]
-
 const ContactsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("friends")
   const [activeFilter, setActiveFilter] = useState("all")
+  const [friendRequestCount, setFriendRequestCount] = useState(0)
+
+  // Thêm state cho danh sách bạn bè
+  const [friendsData, setFriendsData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Thêm useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
+  useEffect(() => {
+    fetchFriendData()
+  }, [])
+
+  // Hàm để lấy dữ liệu bạn bè và lời mời kết bạn
+  const fetchFriendData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Lấy danh sách bạn bè
+      const friendsList = await friendService.getFriends()
+
+      // Xử lý dữ liệu để phân loại theo chữ cái đầu tiên
+      const processedData = processFriendsData(friendsList)
+      setFriendsData(processedData)
+
+      // Lấy số lượng lời mời kết bạn
+      const receivedRequests = await friendService.getReceivedFriendRequests()
+      if (receivedRequests && Array.isArray(receivedRequests)) {
+        setFriendRequestCount(receivedRequests.length)
+      }
+    } catch (error) {
+      console.error("Error fetching friend data:", error)
+      setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  // Hàm xử lý dữ liệu bạn bè thành dạng section
+  const processFriendsData = (friends) => {
+    if (!friends || !Array.isArray(friends)) return []
+
+    // Tạo map để lưu trữ bạn bè theo chữ cái đầu tiên
+    const sections = {}
+
+    // Phân loại bạn bè theo chữ cái đầu tiên
+    friends.forEach((friend) => {
+      const firstLetter = friend.fullName.charAt(0).toUpperCase()
+      if (!sections[firstLetter]) {
+        sections[firstLetter] = []
+      }
+
+      // Thêm bạn bè vào section tương ứng
+      sections[firstLetter].push({
+        id: friend.userId,
+        name: friend.fullName,
+        avatar: friend.avatarUrl ? { uri: friend.avatarUrl } : require("../assets/icon.png"),
+      })
+    })
+
+    // Chuyển đổi map thành mảng sections cho SectionList
+    const sectionArray = Object.keys(sections)
+      .sort()
+      .map((letter) => ({
+        title: letter,
+        data: sections[letter],
+      }))
+
+    return sectionArray
+  }
+
+  // Hàm refresh khi kéo xuống
+  const onRefresh = () => {
+    setRefreshing(true)
+    fetchFriendData()
+  }
+
+  // Cập nhật SPECIAL_SECTIONS để hiển thị số lượng lời mời kết bạn
+  const SPECIAL_SECTIONS = [
+    {
+      id: "friend_requests",
+      name: "Lời mời kết bạn",
+      count: friendRequestCount > 0 ? `(${friendRequestCount})` : "",
+      icon: "people",
+      iconColor: "#0068FF",
+      iconBgColor: "#0068FF20",
+    },
+    {
+      id: "phone_contacts",
+      name: "Danh bạ máy",
+      description: "Các liên hệ có dùng Zalo",
+      icon: "book",
+      iconColor: "#0068FF",
+      iconBgColor: "#0068FF20",
+    },
+  ]
 
   const renderSpecialSection = ({ item }) => (
-    <TouchableOpacity style={styles.specialSection} onPress={() => navigation.navigate("FriendRequestsScreen")}>
+    <TouchableOpacity
+      style={styles.specialSection}
+      onPress={() => {
+        if (item.id === "friend_requests") {
+          navigation.navigate("FriendRequestsScreen")
+        } else if (item.id === "phone_contacts") {
+          // Xử lý khi nhấn vào danh bạ máy
+        }
+      }}
+    >
       <View style={[styles.specialSectionIcon, { backgroundColor: item.iconBgColor }]}>
         <Ionicons name={item.icon} size={24} color={item.iconColor} />
       </View>
@@ -232,7 +300,9 @@ const ContactsScreen = ({ navigation }) => {
                 style={[styles.filterButton, activeFilter === "all" && styles.activeFilterButton]}
                 onPress={() => setActiveFilter("all")}
               >
-                <Text style={[styles.filterText, activeFilter === "all" && styles.activeFilterText]}>Tất cả 75</Text>
+                <Text style={[styles.filterText, activeFilter === "all" && styles.activeFilterText]}>
+                  Tất cả {friendsData.reduce((total, section) => total + section.data.length, 0)}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, activeFilter === "recent" && styles.activeFilterButton]}
@@ -244,15 +314,36 @@ const ContactsScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <SectionList
-              sections={CONTACTS_DATA}
-              renderItem={renderContactItem}
-              renderSectionHeader={renderSectionHeader}
-              keyExtractor={(item) => item.id}
-              stickySectionHeadersEnabled={false}
-              showsVerticalScrollIndicator={false}
-              style={styles.sectionList}
-            />
+            {loading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0068FF" />
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchFriendData}>
+                  <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
+              </View>
+            ) : friendsData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Bạn chưa có bạn bè nào</Text>
+                <TouchableOpacity style={styles.addFriendButton} onPress={() => navigation.navigate("SearchScreen")}>
+                  <Text style={styles.addFriendButtonText}>Tìm bạn bè</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <SectionList
+                sections={friendsData}
+                renderItem={renderContactItem}
+                renderSectionHeader={renderSectionHeader}
+                keyExtractor={(item) => item.id}
+                stickySectionHeadersEnabled={false}
+                showsVerticalScrollIndicator={false}
+                style={styles.sectionList}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
+              />
+            )}
           </>
         ) : (
           <>
@@ -617,6 +708,56 @@ const styles = StyleSheet.create({
     color: "#0068FF",
     fontSize: 12,
     marginTop: 2,
+  },
+  // Thêm styles mới
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#0068FF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    color: "#FFF",
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  addFriendButton: {
+    backgroundColor: "#0068FF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  addFriendButtonText: {
+    color: "#FFF",
+    fontSize: 16,
   },
 })
 

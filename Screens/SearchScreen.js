@@ -73,6 +73,7 @@ const SearchScreen = ({ navigation }) => {
     setSearchResults([])
   }
 
+  // Thay đổi hàm handleFriendAction để thêm chức năng thu hồi lời mời kết bạn
   const handleFriendAction = async (user) => {
     try {
       switch (user.friendshipStatus) {
@@ -80,6 +81,7 @@ const SearchScreen = ({ navigation }) => {
           // Send friend request
           await friendService.sendFriendRequest(user.userId)
           updateUserStatus(user.userId, "pending_sent", null)
+          Alert.alert("Thành công", `Đã gửi lời mời kết bạn đến ${user.fullName}`)
           break
 
         case "pending_sent":
@@ -92,10 +94,10 @@ const SearchScreen = ({ navigation }) => {
             {
               text: "Xác nhận",
               onPress: async () => {
-                // Cancel friend request logic would go here
-                // Since the API doesn't have a specific endpoint for this in the guide,
-                // we'll just update the UI for now
+                // Cancel friend request
+                await friendService.withdrawFriendRequest(user.requestId)
                 updateUserStatus(user.userId, "not_friends", null)
+                Alert.alert("Thành công", "Đã hủy lời mời kết bạn")
               },
             },
           ])
@@ -109,6 +111,7 @@ const SearchScreen = ({ navigation }) => {
               onPress: async () => {
                 await friendService.respondToFriendRequest(user.requestId, "reject")
                 updateUserStatus(user.userId, "not_friends", null)
+                Alert.alert("Thành công", "Đã từ chối lời mời kết bạn")
               },
               style: "cancel",
             },
@@ -117,6 +120,7 @@ const SearchScreen = ({ navigation }) => {
               onPress: async () => {
                 await friendService.respondToFriendRequest(user.requestId, "accept")
                 updateUserStatus(user.userId, "friends", null)
+                Alert.alert("Thành công", "Đã chấp nhận lời mời kết bạn")
               },
             },
           ])
