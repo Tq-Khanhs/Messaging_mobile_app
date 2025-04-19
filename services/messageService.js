@@ -7,22 +7,22 @@ export const messageService = {
   getConversations: async () => {
     try {
       // Get the authentication token from localStorage or your auth state
-      const token = AsyncStorage.getItem('authToken'); // or however you store your auth token
-      
+      const token = AsyncStorage.getItem("authToken") // or however you store your auth token
+
       if (!token) {
-        throw new Error("Authentication token not found");
+        throw new Error("Authentication token not found")
       }
-      
+
       const response = await api.get("/messages/conversations", {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      return response.data.conversations;
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      return response.data.conversations
     } catch (error) {
-      console.error("Get conversations error:", error);
-      throw error;
+      console.error("Get conversations error:", error)
+      throw error
     }
   },
 
@@ -81,59 +81,12 @@ export const messageService = {
     try {
       console.log(`Sending image message to conversation: ${conversationId}`)
 
-      // If we're only sending one image, simplify the process
-      if (imageUris.length === 1) {
-        const formData = new FormData()
-        formData.append("conversationId", conversationId)
+      const formData = new FormData()
+      formData.append("conversationId", conversationId)
 
-        const uri = imageUris[0]
-        const uriParts = uri.split(".")
-        const fileType = uriParts[uriParts.length - 1]
-
-        formData.append("images", {
-          uri: uri,
-          type: `image/${fileType}`,
-          name: `image.${fileType}`,
-        })
-
-        console.log("Sending image with FormData:", formData)
-
-        // For demo purposes, create a mock response
-        // In a real app, this would be the API call:
-        // const response = await api.post("/messages/send/image", formData, {
-        //   headers: {
-        //     "Content-Type": "multipart/form-data",
-        //   },
-        // });
-
-        // Mock response for demo
-        const mockResponse = {
-          messageId: `img-${Date.now()}`,
-          content: "",
-          type: "image",
-          attachments: [
-            {
-              url: uri,
-              type: `image/${fileType}`,
-              name: `image.${fileType}`,
-              size: 100000,
-              _id: Date.now() + Math.random().toString(),
-            },
-          ],
-          senderId: await getCurrentUserId(),
-          createdAt: new Date().toISOString(),
-          isDeleted: false,
-          isRecalled: false,
-        }
-
-        console.log("Image message sent successfully:", mockResponse)
-        return mockResponse
-      } else {
-        // Original implementation for  multiple images
-        const formData = new FormData()
-        formData.append("conversationId", conversationId)
-
-        const attachments = imageUris.map((uri, index) => {
+      // Handle single or multiple images
+      if (Array.isArray(imageUris)) {
+        imageUris.forEach((uri, index) => {
           const uriParts = uri.split(".")
           const fileType = uriParts[uriParts.length - 1]
 
@@ -142,30 +95,27 @@ export const messageService = {
             type: `image/${fileType}`,
             name: `image${index}.${fileType}`,
           })
-
-          return {
-            url: uri,
-            type: `image/${fileType}`,
-            name: `image${index}.${fileType}`,
-            size: 100000,
-            _id: Date.now() + index + Math.random().toString(),
-          }
         })
+      } else {
+        const uri = imageUris
+        const uriParts = uri.split(".")
+        const fileType = uriParts[uriParts.length - 1]
 
-        // Mock response for demo with multiple images
-        const mockResponse = {
-          messageId: `img-group-${Date.now()}`,
-          content: "",
-          type: "imageGroup",
-          attachments: attachments,
-          senderId: await getCurrentUserId(),
-          createdAt: new Date().toISOString(),
-          isDeleted: false,
-          isRecalled: false,
-        }
-
-        return mockResponse
+        formData.append("images", {
+          uri: uri,
+          type: `image/${fileType}`,
+          name: `image.${fileType}`,
+        })
       }
+
+      const response = await api.post("/messages/send/image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      console.log("Image message sent successfully:", response.data.messageData)
+      return response.data.messageData
     } catch (error) {
       console.error("Send image message error:", error)
       throw error
@@ -173,27 +123,18 @@ export const messageService = {
   },
 
   // Send file message
-  sendFileMessage: async (conversationId, fileUri, fileName, fileType, fileSize) => {
+  sendFileMessage: async (conversationId, fileUri, fileName, fileType) => {
     try {
-      console.log(`Sending file message to conversation: ${conversationId}`, {
-        fileUri,
-        fileName,
-        fileType,
-        fileSize,
-      })
+      console.log(`Sending file message to conversation: ${conversationId}`)
 
-      // Kiểm tra các tham số đầu vào
-      if (!conversationId) {
-        throw new Error("Missing conversationId")
-      }
-      if (!fileUri) {
-        throw new Error("Missing fileUri")
-      }
+      const formData = new FormData()
+      formData.append("conversationId", conversationId)
+
       if (!fileName) {
-        fileName = fileUri.split("/").pop() || "unknown_file"
+        fileName = fileUri.split("/").pop() || "file"
       }
+
       if (!fileType) {
-        // Đoán loại file từ phần mở rộng
         const extension = fileName.split(".").pop().toLowerCase()
         switch (extension) {
           case "pdf":
@@ -225,39 +166,20 @@ export const messageService = {
         }
       }
 
-      const formData = new FormData()
-      formData.append("conversationId", conversationId)
       formData.append("file", {
         uri: fileUri,
         type: fileType,
         name: fileName,
       })
 
-      // Sử dụng kích thước file thực tế nếu có
-      const fileSizeValue = fileSize || 2270148 // Mock file size nếu không có kích thước thực tế
+      const response = await api.post("/messages/send/file", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
 
-      // Mock response for demo
-      const mockResponse = {
-        messageId: `file-${Date.now()}`,
-        content: "",
-        type: "file",
-        attachments: [
-          {
-            url: fileUri,
-            type: fileType,
-            name: fileName,
-            size: fileSizeValue,
-            _id: Date.now() + Math.random().toString(),
-          },
-        ],
-        senderId: await getCurrentUserId(),
-        createdAt: new Date().toISOString(),
-        isDeleted: false,
-        isRecalled: false,
-      }
-
-      console.log("File message prepared successfully:", mockResponse)
-      return mockResponse
+      console.log("File message sent successfully:", response.data.messageData)
+      return response.data.messageData
     } catch (error) {
       console.error("Send file message error:", error)
       throw error

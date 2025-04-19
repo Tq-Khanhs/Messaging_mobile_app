@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Image,
   FlatList,
   TextInput,
@@ -26,11 +27,11 @@ import { authService } from "../services/authService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
-// Add this import at the top of the file
-// Remove DocumentPicker import
-// Add these imports at the top of the file
-// Remove this import at the top of the file
-// import Clipboard from "@react-native-clipboard/clipboard"
+import * as Clipboard from "expo-clipboard"
+import * as FileSystem from "expo-file-system"
+import * as Sharing from "expo-sharing"
+import * as MediaLibrary from "expo-media-library"
+import { friendService } from "../services/friendService"
 
 const { width, height } = Dimensions.get("window")
 
@@ -141,6 +142,36 @@ const EMOJIS = [
 // Component để hiển thị gallery ảnh
 const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [scale, setScale] = useState(1)
+  const [translateX, setTranslateX] = useState(0)
+  const [translateY, setTranslateY] = useState(0)
+  const [lastScale, setLastScale] = useState(1)
+  const [lastTranslateX, setLastTranslateX] = useState(0)
+  const [lastTranslateY, setLastTranslateY] = useState(0)
+  const [pinchStartDistance, setPinchStartDistance] = useState(0)
+  const [doubleTapTimeout, setDoubleTapTimeout] = useState(null)
+  const [lastTapTimestamp, setLastTapTimestamp] = useState(0)
+
+  // Reset transformations when changing images
+  useEffect(() => {
+    resetTransformations()
+  }, [currentIndex])
+
+  // Reset transformations when closing the gallery
+  useEffect(() => {
+    if (!visible) {
+      resetTransformations()
+    }
+  }, [visible])
+
+  const resetTransformations = () => {
+    setScale(1)
+    setTranslateX(0)
+    setTranslateY(0)
+    setLastScale(1)
+    setLastTranslateX(0)
+    setLastTranslateY(0)
+  }
 
   const handleNext = () => {
     if (currentIndex < images.length - 1) {
@@ -151,6 +182,107 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
+    }
+  }
+
+  // Handle pinch to zoom
+  const handlePinchStart = (event) => {
+    if (event.nativeEvent.touches.length === 2) {
+      const touch1 = event.nativeEvent.touches[0]
+      const touch2 = event.nativeEvent.touches[1]
+      const distance = Math.sqrt(Math.pow(touch2.pageX - touch1.pageX, 2) + Math.pow(touch2.pageY - touch1.pageY, 2))
+      setPinchStartDistance(distance)
+    }
+  }
+
+  const handlePinchMove = (event) => {
+    if (event.nativeEvent.touches.length === 2) {
+      const touch1 = event.nativeEvent.touches[0]
+      const touch2 = event.nativeEvent.touches[1]
+      const distance = Math.sqrt(Math.pow(touch2.pageX - touch1.pageX, 2) + Math.pow(touch2.pageY - touch1.pageY, 2))
+
+      if (pinchStartDistance > 0) {
+        const newScale = Math.max(1, Math.min(5, lastScale * (distance / pinchStartDistance)))
+        setScale(newScale)
+      }
+    }
+  }
+
+  const handlePinchEnd = () => {
+    setLastScale(scale)
+    setPinchStartDistance(0)
+  }
+
+  // Handle pan (drag) when zoomed in
+  const handlePanStart = (event) => {
+    if (scale > 1 && event.nativeEvent.touches.length === 1) {
+      setLastTranslateX(translateX)
+      setLastTranslateY(translateY)
+    }
+  }
+
+  const handlePanMove = (event) => {
+    if (scale > 1 && event.nativeEvent.touches.length === 1) {
+      const touch = event.nativeEvent.touches[0]
+      const dx = touch.pageX - event.nativeEvent.touches[0].locationX
+      const dy = touch.pageY - event.nativeEvent.touches[0].locationY
+
+      // Calculate boundaries to prevent dragging outside the image
+      const maxTranslateX = ((scale - 1) * width) / 2
+      const maxTranslateY = ((scale - 1) * height) / 2
+
+      const newTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, lastTranslateX + dx))
+      const newTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, lastTranslateY + dy))
+
+      setTranslateX(newTranslateX)
+      setTranslateY(newTranslateY)
+    }
+  }
+
+  // Handle double tap to zoom
+  const handleDoubleTap = (event) => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 300 // ms
+
+    if (now - lastTapTimestamp < DOUBLE_TAP_DELAY) {
+      // Double tap detected
+      clearTimeout(doubleTapTimeout)
+
+      if (scale > 1) {
+        // If already zoomed in, reset to normal
+        resetTransformations()
+      } else {
+        // Zoom in to 2x at the tap location
+        const tapX = event.nativeEvent.locationX
+        const tapY = event.nativeEvent.locationY
+
+        // Calculate the center point of the screen
+        const centerX = width / 2
+        const centerY = height / 2
+
+        // Calculate the offset from center
+        const offsetX = (tapX - centerX) * 0.5
+        const offsetY = (tapY - centerY) * 0.5
+
+        setScale(2)
+        setTranslateX(offsetX)
+        setTranslateY(offsetY)
+        setLastScale(2)
+        setLastTranslateX(offsetX)
+        setLastTranslateY(offsetY)
+      }
+
+      setLastTapTimestamp(0) // Reset
+    } else {
+      // First tap
+      setLastTapTimestamp(now)
+
+      // Set a timeout to detect if it's a single tap
+      const timeout = setTimeout(() => {
+        setLastTapTimestamp(0)
+      }, DOUBLE_TAP_DELAY)
+
+      setDoubleTapTimeout(timeout)
     }
   }
 
@@ -166,12 +298,26 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
           </Text>
         </View>
 
-        <View style={styles.galleryImageContainer}>
-          <Image
-            source={{ uri: images[currentIndex]?.url || images[currentIndex] }}
-            style={styles.galleryImage}
-            resizeMode="contain"
-          />
+        <View
+          style={styles.galleryImageContainer}
+          onTouchStart={handlePanStart}
+          onTouchMove={handlePanMove}
+          onResponderStart={handlePinchStart}
+          onResponderMove={handlePinchMove}
+          onResponderRelease={handlePinchEnd}
+        >
+          <TouchableWithoutFeedback onPress={handleDoubleTap}>
+            <Image
+              source={{ uri: images[currentIndex]?.url || images[currentIndex] }}
+              style={[
+                styles.galleryImage,
+                {
+                  transform: [{ scale: scale }, { translateX: translateX }, { translateY: translateY }],
+                },
+              ]}
+              resizeMode="contain"
+            />
+          </TouchableWithoutFeedback>
         </View>
 
         <View style={styles.galleryControls}>
@@ -241,46 +387,43 @@ const EmojiPicker = ({ onEmojiSelected }) => {
     </View>
   )
 }
+const isSingleEmoji = (text) => {
+  // This regex matches a single emoji character
+  const emojiRegex = /^[\p{Emoji}]$/u
+  return emojiRegex.test(text)
+}
 
 // Add this new component for the message action menu
-const MessageActionMenu = ({
-  visible,
-  onClose,
-  onReply,
-  onForward,
-  onCopy,
-  onRecall,
-  onPin,
-  onSaveToCloud,
-  message,
-  isOwnMessage,
-}) => {
+const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDelete, message, isOwnMessage }) => {
   if (!visible) return null
+  const showCopyOption =
+    message && (message.type === "text" || message.type === "emoji" || isSingleEmoji(message.content))
+
+  const copyLabel = message.type === "image" ? "Copy Image" : "Sao chép"
+
+  const handleCopyMessage = async (message) => {
+    try {
+      if (message.type === "text" || message.type === "emoji" || isSingleEmoji(message.content)) {
+        await Clipboard.setStringAsync(message.content)
+        Alert.alert("Đã sao chép", "Tin nhắn đã được sao chép vào bộ nhớ tạm.")
+      }
+      onClose()
+    } catch (error) {
+      console.error("Copy error:", error)
+      Alert.alert("Lỗi", "Không thể sao chép tin nhắn")
+    }
+  }
 
   return (
     <Modal transparent={true} visible={visible} animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.messageActionContainer}>
           <View style={styles.actionButtonsGrid}>
-            <TouchableOpacity style={styles.actionButton} onPress={onReply}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="arrow-undo-outline" size={24} color="#4CD964" />
-              </View>
-              <Text style={styles.actionText}>Trả lời</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.actionButton} onPress={onForward}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="arrow-redo-outline" size={24} color="#0068FF" />
               </View>
               <Text style={styles.actionText}>Chuyển tiếp</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton} onPress={onSaveToCloud}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="cloud-upload-outline" size={24} color="#0068FF" />
-              </View>
-              <Text style={styles.actionText}>Lưu Cloud</Text>
             </TouchableOpacity>
 
             {isOwnMessage && (
@@ -292,62 +435,26 @@ const MessageActionMenu = ({
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.actionButton} onPress={onCopy}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="copy-outline" size={24} color="#0068FF" />
-              </View>
-              <Text style={styles.actionText}>Sao chép</Text>
-            </TouchableOpacity>
+            {showCopyOption && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  handleCopyMessage(message)
+                  onClose()
+                }}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="copy-outline" size={24} color="#0068FF" />
+                </View>
+                <Text style={styles.actionText}>{copyLabel}</Text>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity style={styles.actionButton} onPress={onDelete}>
               <View style={styles.actionIconContainer}>
-                <Ionicons name="bookmark-outline" size={24} color="#FF9500" />
+                <Ionicons name="trash-outline" size={24} color="#FF3B30" />
               </View>
-              <Text style={styles.actionText}>Ghim</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="time-outline" size={24} color="#FF3B30" />
-              </View>
-              <Text style={styles.actionText}>Nhắc hẹn</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="checkmark-done-outline" size={24} color="#0068FF" />
-              </View>
-              <Text style={styles.actionText}>Chọn nhiều</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="chatbubble-outline" size={24} color="#0068FF" />
-              </View>
-              <Text style={styles.actionText}>Tạo tin nhắn nhanh</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="language-outline" size={24} color="#0068FF" />
-                <Text style={styles.betaTag}>BETA</Text>
-              </View>
-              <Text style={styles.actionText}>Dịch</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="volume-high-outline" size={24} color="#0068FF" />
-                <Text style={styles.betaTag}>BETA</Text>
-              </View>
-              <Text style={styles.actionText}>Đọc văn bản</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="information-circle-outline" size={24} color="#8E8E93" />
-              </View>
-              <Text style={styles.actionText}>Chi tiết</Text>
+              <Text style={styles.actionText}>Xóa</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -356,9 +463,246 @@ const MessageActionMenu = ({
   )
 }
 
-// Add this new component for the forward screen
-const ForwardScreen = ({ visible, onClose, contacts, onSelectContact }) => {
+// Update the ForwardScreen component to properly handle message forwarding
+const ForwardScreen = ({ visible, onClose, contacts, onSelectContact, messageToForward }) => {
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedContacts, setSelectedContacts] = useState([])
+  const [selectedConversationIds, setSelectedConversationIds] = useState([]) // Track selected conversation IDs
+  const [groups, setGroups] = useState([
+    {
+      id: "group1",
+      name: "Nhóm 12_CNM",
+      avatar: null,
+      isGroup: true,
+      memberCount: 5,
+      members: [
+        { id: "m1", avatar: require("../assets/icon.png") },
+        { id: "m2", avatar: require("../assets/icon.png") },
+        { id: "m3", avatar: require("../assets/icon.png") },
+      ],
+    },
+    {
+      id: "group2",
+      name: "DHTH17F",
+      avatar: require("../assets/icon.png"),
+      isGroup: true,
+    },
+    {
+      id: "group3",
+      name: "CN_DHKTPM17C",
+      avatar: null,
+      isGroup: true,
+      memberCount: 70,
+      members: [
+        { id: "m1", avatar: require("../assets/icon.png") },
+        { id: "m2", avatar: require("../assets/icon.png") },
+        { id: "m3", avatar: require("../assets/icon.png") },
+      ],
+    },
+    {
+      id: "group4",
+      name: "nhóm.học triết 5F🦄",
+      avatar: null,
+      isGroup: true,
+      memberCount: 10,
+      members: [
+        { id: "m1", avatar: require("../assets/icon.png") },
+        { id: "m2", avatar: require("../assets/icon.png") },
+        { id: "m3", avatar: require("../assets/icon.png") },
+      ],
+    },
+    {
+      id: "group5",
+      name: "Nhóm GDTC ca 2 lớp DHTH17B IUH",
+      avatar: null,
+      isGroup: true,
+      memberCount: 30,
+      members: [
+        { id: "m1", avatar: require("../assets/icon.png") },
+        { id: "m2", avatar: require("../assets/icon.png") },
+        { id: "m3", avatar: require("../assets/icon.png") },
+      ],
+    },
+  ])
+
+  // State for friends data
+  const [friendsData, setFriendsData] = useState({})
+  const [sortedLetters, setSortedLetters] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [isSending, setIsSending] = useState(false) // Track sending state
+
+  // Fetch friends data when the component becomes visible
+  useEffect(() => {
+    if (visible) {
+      fetchFriends()
+    }
+  }, [visible])
+
+  // Function to fetch friends from friendService
+  const fetchFriends = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Get friends from the friendService
+      const friends = await friendService.getFriends()
+
+      // Process friends data into alphabetical sections
+      const groupedFriends = processFriendsData(friends)
+      setFriendsData(groupedFriends)
+
+      // Sort letters alphabetically
+      const letters = Object.keys(groupedFriends).sort()
+      setSortedLetters(letters)
+    } catch (err) {
+      console.error("Error fetching friends for forward screen:", err)
+      setError("Không thể tải danh sách bạn bè")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Process friends data into alphabetical sections
+  const processFriendsData = (friends) => {
+    if (!friends || !Array.isArray(friends)) return {}
+
+    // Group friends by first letter of name
+    const sections = {}
+
+    friends.forEach((friend) => {
+      const firstLetter = friend.fullName.charAt(0).toUpperCase()
+
+      if (!sections[firstLetter]) {
+        sections[firstLetter] = []
+      }
+
+      sections[firstLetter].push({
+        id: friend.userId,
+        name: friend.fullName,
+        avatar: friend.avatarUrl ? { uri: friend.avatarUrl } : null,
+        letter: firstLetter,
+        conversationId: friend.conversationId, // Store conversation ID if available
+      })
+    })
+
+    return sections
+  }
+
+  const toggleSelectContact = (contact) => {
+    // Check if contact is already selected
+    if (selectedContacts.some((c) => c.id === contact.id)) {
+      // Remove from selected contacts
+      setSelectedContacts(selectedContacts.filter((c) => c.id !== contact.id))
+
+      // Remove conversation ID if it exists
+      if (contact.conversationId) {
+        setSelectedConversationIds(selectedConversationIds.filter((id) => id !== contact.conversationId))
+      }
+    } else {
+      // Add to selected contacts
+      setSelectedContacts([...selectedContacts, contact])
+
+      // Add conversation ID if it exists
+      if (contact.conversationId) {
+        setSelectedConversationIds([...selectedConversationIds, contact.conversationId])
+      }
+    }
+  }
+
+  const handleSend = async () => {
+    if (selectedContacts.length === 0 || !messageToForward) return
+
+    try {
+      setIsSending(true)
+
+      // Create an array to track successful forwards
+      const successfulForwards = []
+      const failedForwards = []
+
+      // Forward the message to each selected conversation
+      for (const contact of selectedContacts) {
+        try {
+          // First, get or create a conversation with this contact if needed
+          let conversationId = contact.conversationId
+
+          if (!conversationId) {
+            // If no conversation ID exists, create one
+            const conversation = await messageService.getOrStartConversation(contact.id)
+            conversationId = conversation.conversationId
+          }
+
+          // Forward the message to this conversation
+          await messageService.forwardMessage(messageToForward.messageId, conversationId)
+
+          // Add to successful forwards
+          successfulForwards.push(contact.name)
+        } catch (err) {
+          console.error(`Failed to forward message to ${contact.name}:`, err)
+          failedForwards.push(contact.name)
+        }
+      }
+
+      // Show success message
+      if (successfulForwards.length > 0) {
+        const message =
+          successfulForwards.length === 1
+            ? `Đã chuyển tiếp tin nhắn đến ${successfulForwards[0]}`
+            : `Đã chuyển tiếp tin nhắn đến ${successfulForwards.length} người`
+
+        Alert.alert("Thành công", message)
+      }
+
+      // Show error message if any forwards failed
+      if (failedForwards.length > 0) {
+        const message =
+          failedForwards.length === 1
+            ? `Không thể chuyển tiếp tin nhắn đến ${failedForwards[0]}`
+            : `Không thể chuyển tiếp tin nhắn đến ${failedForwards.length} người`
+
+        Alert.alert("Lỗi", message)
+      }
+
+      // Close the forward screen
+      onClose()
+    } catch (err) {
+      console.error("Error forwarding messages:", err)
+      Alert.alert("Lỗi", "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.")
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Filter friends and groups based on search query
+  const filterItems = (items, query) => {
+    if (!query) return items
+
+    const lowercaseQuery = query.toLowerCase()
+    return items.filter((item) => item.name.toLowerCase().includes(lowercaseQuery))
+  }
+
+  // Get the message content to display
+  const getMessageContent = () => {
+    if (!messageToForward) return ""
+
+    if (
+      messageToForward.type === "image" ||
+      (messageToForward.attachments &&
+        messageToForward.attachments.length > 0 &&
+        messageToForward.attachments[0].type.startsWith("image/"))
+    ) {
+      return "[Hình ảnh]"
+    } else if (
+      messageToForward.type === "file" ||
+      (messageToForward.attachments &&
+        messageToForward.attachments.length > 0 &&
+        !messageToForward.attachments[0].type.startsWith("image/"))
+    ) {
+      return "[File]"
+    } else {
+      return messageToForward.content || ""
+    }
+  }
 
   if (!visible) return null
 
@@ -369,11 +713,14 @@ const ForwardScreen = ({ visible, onClose, contacts, onSelectContact }) => {
           <TouchableOpacity onPress={onClose}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.forwardTitle}>Chia sẻ</Text>
-          <Text style={styles.forwardSubtitle}>Đã chọn: 0</Text>
+          <View style={styles.forwardHeaderTitle}>
+            <Text style={styles.forwardTitle}>Chia sẻ</Text>
+            <Text style={styles.forwardSubtitle}>Đã chọn: {selectedContacts.length}</Text>
+          </View>
         </View>
 
         <View style={styles.forwardSearchContainer}>
+          <Ionicons name="search" size={20} color="#8E8E93" style={styles.forwardSearchIcon} />
           <TextInput
             style={styles.forwardSearchInput}
             placeholder="Tìm kiếm"
@@ -383,67 +730,139 @@ const ForwardScreen = ({ visible, onClose, contacts, onSelectContact }) => {
           />
         </View>
 
-        <View style={styles.forwardTabsContainer}>
-          <View style={styles.forwardTab}>
-            <View style={styles.forwardTabIcon}>
-              <Ionicons name="people" size={24} color="#FFFFFF" />
-            </View>
-            <Text style={styles.forwardTabText}>Nhóm mới</Text>
+        {loading ? (
+          <View style={styles.forwardLoadingContainer}>
+            <ActivityIndicator size="large" color="#0068FF" />
           </View>
+        ) : (
+          <ScrollView style={styles.forwardScrollView}>
+            {/* Groups Section */}
+            <View style={styles.forwardSectionContainer}>
+              <Text style={styles.forwardSectionTitle}>Nhóm trò chuyện</Text>
 
-          <View style={styles.forwardTab}>
-            <View style={styles.forwardTabIcon}>
-              <Ionicons name="time" size={24} color="#FFFFFF" />
+              {groups.map((group) => (
+                <TouchableOpacity
+                  key={group.id}
+                  style={styles.forwardContactItem}
+                  onPress={() => toggleSelectContact(group)}
+                >
+                  <View style={styles.groupAvatarContainer}>
+                    {group.avatar ? (
+                      <Image source={group.avatar} style={styles.forwardContactAvatar} />
+                    ) : (
+                      <View style={styles.groupAvatarsStack}>
+                        {group.members &&
+                          group.members
+                            .slice(0, 3)
+                            .map((member, index) => (
+                              <Image
+                                key={member.id}
+                                source={member.avatar}
+                                style={[
+                                  styles.groupStackedAvatar,
+                                  { top: index * 8, left: index * 8, zIndex: 3 - index },
+                                ]}
+                              />
+                            ))}
+                        {group.memberCount && (
+                          <View style={styles.groupMemberCount}>
+                            <Text style={styles.groupMemberCountText}>{group.memberCount}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={styles.forwardContactName}>{group.name}</Text>
+
+                  <View
+                    style={[
+                      styles.forwardCheckbox,
+                      selectedContacts.some((c) => c.id === group.id) && styles.forwardCheckboxSelected,
+                    ]}
+                  />
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity style={styles.seeMoreButton}>
+                <Text style={styles.seeMoreText}>Xem thêm</Text>
+                <Ionicons name="chevron-forward" size={20} color="#0068FF" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.forwardTabText}>Nhật ký</Text>
-          </View>
 
-          <View style={styles.forwardTab}>
-            <View style={styles.forwardTabIcon}>
-              <Ionicons name="share" size={24} color="#FFFFFF" />
-            </View>
-            <Text style={styles.forwardTabText}>App khác</Text>
-          </View>
-        </View>
+            {/* Friends Section */}
+            <View style={styles.forwardSectionContainer}>
+              <Text style={styles.forwardSectionTitle}>Bạn bè</Text>
 
-        <Text style={styles.forwardSectionTitle}>Gần đây</Text>
-
-        <FlatList
-          data={
-            contacts || [
-              { id: "1", name: "Cloud của tôi", avatar: null, isCloud: true },
-              { id: "2", name: "Mã 2", avatar: null, isGroup: false },
-              { id: "3", name: "Nhóm 12_CNM", avatar: null, isGroup: true, memberCount: 5 },
-              { id: "4", name: "CN_DHKTPM17C", avatar: null, isGroup: true, memberCount: 70 },
-              { id: "5", name: "Báo Mới", avatar: null, isOfficial: true },
-            ]
-          }
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.forwardContactItem} onPress={() => onSelectContact(item)}>
-              {item.isCloud ? (
-                <View style={[styles.forwardContactAvatar, { backgroundColor: "#0068FF" }]}>
-                  <Ionicons name="cloud" size={24} color="#FFFFFF" />
+              {error ? (
+                <View style={styles.forwardErrorContainer}>
+                  <Text style={styles.forwardErrorText}>{error}</Text>
+                  <TouchableOpacity style={styles.forwardRetryButton} onPress={fetchFriends}>
+                    <Text style={styles.forwardRetryButtonText}>Thử lại</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : item.avatar ? (
-                <Image source={{ uri: item.avatar }} style={styles.forwardContactAvatar} />
               ) : (
-                <View style={[styles.forwardContactAvatar, { backgroundColor: item.isGroup ? "#FF9500" : "#FF3B30" }]}>
-                  <Text style={styles.forwardContactInitial}>{item.name.charAt(0).toUpperCase()}</Text>
-                  {item.isGroup && item.memberCount && (
-                    <View style={styles.forwardMemberCount}>
-                      <Text style={styles.forwardMemberCountText}>{item.memberCount}</Text>
-                    </View>
-                  )}
-                </View>
+                sortedLetters.map((letter) => (
+                  <View key={letter}>
+                    <Text style={styles.alphabetHeader}>{letter}</Text>
+
+                    {friendsData[letter].map((friend) => (
+                      <TouchableOpacity
+                        key={friend.id}
+                        style={styles.forwardContactItem}
+                        onPress={() => toggleSelectContact(friend)}
+                      >
+                        {friend.avatar ? (
+                          <Image source={friend.avatar} style={styles.forwardContactAvatar} />
+                        ) : (
+                          <View style={[styles.forwardContactAvatar, { backgroundColor: "#FF3B30" }]}>
+                            <Text style={styles.forwardContactInitial}>{friend.name.charAt(0).toUpperCase()}</Text>
+                          </View>
+                        )}
+
+                        <Text style={styles.forwardContactName}>{friend.name}</Text>
+
+                        <View
+                          style={[
+                            styles.forwardCheckbox,
+                            selectedContacts.some((c) => c.id === friend.id) && styles.forwardCheckboxSelected,
+                          ]}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ))
               )}
+            </View>
+          </ScrollView>
+        )}
 
-              <Text style={styles.forwardContactName}>{item.name}</Text>
+        <View style={styles.forwardFooter}>
+          <View style={styles.forwardInputContainer}>
+            <TextInput
+              style={[styles.forwardMessageInput, { color: "#FFFFFF" }]}
+              value={getMessageContent()}
+              editable={false}
+              multiline={true}
+              numberOfLines={2}
+            />
+          </View>
 
-              <View style={styles.forwardCheckbox} />
-            </TouchableOpacity>
-          )}
-        />
+          <TouchableOpacity
+            style={[
+              styles.forwardSendButton,
+              selectedContacts.length === 0 || isSending ? styles.forwardSendButtonDisabled : {},
+            ]}
+            onPress={handleSend}
+            disabled={selectedContacts.length === 0 || isSending}
+          >
+            {isSending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="send" size={24} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </Modal>
   )
@@ -468,7 +887,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [replyingToMessage, setReplyingToMessage] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [sending, setSending] = useState(false)
@@ -718,14 +1137,37 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
   const handleDeleteMessage = async (message) => {
     try {
-      await messageService.deleteMessage(message.messageId)
+      // Show confirmation dialog before deleting
+      Alert.alert("Xóa tin nhắn", "Bạn có chắc chắn muốn xóa tin nhắn này không?", [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Xóa",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setShowMessageActions(false)
 
-      // Update message in UI
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) => (msg.messageId === message.messageId ? { ...msg, isDeleted: true } : msg)),
-      )
+              // Call the API to delete the message
+              await messageService.deleteMessage(message.messageId)
+
+              // Update the UI to show the message as deleted
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) => (msg.messageId === message.messageId ? { ...msg, isDeleted: true } : msg)),
+              )
+
+              Alert.alert("Thành công", "Tin nhắn đã được xóa")
+            } catch (err) {
+              console.error("Error deleting message:", err)
+              Alert.alert("Lỗi", "Không thể xóa tin nhắn. Vui lòng thử lại.")
+            }
+          },
+        },
+      ])
     } catch (err) {
-      console.error("Error deleting message:", err)
+      console.error("Error in delete message flow:", err)
       Alert.alert("Lỗi", "Không thể xóa tin nhắn. Vui lòng thử lại.")
     }
   }
@@ -745,6 +1187,14 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }
 
   // Hàm mở gallery ảnh
+
+  // Update the handleSingleImagePress function to properly handle image taps
+  const handleSingleImagePress = (imageUrl) => {
+    // Create an array with just this image URL for the gallery
+    openImageGallery([imageUrl])
+  }
+
+  // Update the openImageGallery function to reset transformations
   const openImageGallery = (images, initialIndex = 0) => {
     setGalleryImages(images)
     setGalleryInitialIndex(initialIndex)
@@ -756,11 +1206,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     // Tạo mảng URLs từ attachments
     const imageUrls = message.attachments.map((attachment) => attachment.url)
     openImageGallery(imageUrls, index)
-  }
-
-  // Hàm xử lý khi nhấn vào một ảnh đơn
-  const handleSingleImagePress = (imageUrl) => {
-    openImageGallery([imageUrl])
   }
 
   // Thay đổi hàm handleImageUpload để xử lý ảnh tốt hơn
@@ -784,83 +1229,39 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
         // Nếu chọn nhiều ảnh
         if (result.assets.length > 1) {
-          // Tạo attachments từ các ảnh đã chọn
-          const attachments = result.assets.map((asset) => ({
-            url: asset.uri,
-            type: asset.mimeType || "image/jpeg",
-            name: asset.name || asset.uri.split("/").pop() || "image.jpg",
-            size: asset.size || 100000,
-            _id: Date.now() + Math.random().toString(),
-          }))
+          try {
+            // Tạo mảng URI từ các assets đã chọn
+            const imageUris = result.assets.map((asset) => asset.uri)
 
-          // Optimistically add image group message to UI
-          const currentTime = new Date()
-          const newMessage = {
-            messageId: `temp-${Date.now()}`,
-            content: "",
-            timestamp: currentTime,
-            senderId: currentUser?.userId,
-            type: "imageGroup",
-            attachments: attachments,
-            isDeleted: false,
-            isRecalled: false,
-            createdAt: currentTime.toISOString(),
-          }
+            // Gọi API để gửi nhiều ảnh
+            const response = await messageService.sendImageMessage(conversation.id, imageUris)
 
-          setMessages([newMessage, ...messages])
+            // Cập nhật UI với tin nhắn mới
+            setMessages([response, ...messages])
 
-          // Trong ứng dụng thực tế, bạn sẽ gửi các ảnh lên server
-          // Ở đây chúng ta giả định rằng đã gửi thành công
-          setTimeout(() => {
-            // Cập nhật tin nhắn tạm thời với ID thực tế
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `img-group-${Date.now()}` } : msg,
-              ),
-            )
             Alert.alert("Thành công", "Đã gửi nhóm hình ảnh thành công!")
-          }, 1000)
+          } catch (apiError) {
+            console.error("Error sending multiple images:", apiError)
+            Alert.alert("Lỗi", "Không thể gửi nhóm hình ảnh. Vui lòng thử lại.")
+          }
         } else {
           // Nếu chỉ chọn một ảnh
           const asset = result.assets[0]
           const imageUri = asset.uri
           console.log("Selected image URI:", imageUri)
 
-          // Optimistically add image message to UI
-          const currentTime = new Date()
-          const newMessage = {
-            messageId: `temp-${Date.now()}`,
-            content: "",
-            type: "image",
-            attachments: [
-              {
-                url: imageUri,
-                type: asset.mimeType || "image/jpeg",
-                name: asset.name || imageUri.split("/").pop() || "image.jpg",
-                size: asset.size || 100000,
-                _id: Date.now() + Math.random().toString(),
-              },
-            ],
-            timestamp: currentTime,
-            senderId: currentUser?.userId,
-            isDeleted: false,
-            isRecalled: false,
-            createdAt: currentTime.toISOString(),
-          }
+          try {
+            // Gọi API để gửi một ảnh
+            const response = await messageService.sendImageMessage(conversation.id, [imageUri])
 
-          setMessages([newMessage, ...messages])
+            // Cập nhật UI với tin nhắn mới
+            setMessages([response, ...messages])
 
-          // Trong ứng dụng thực tế, bạn sẽ gửi ảnh lên server
-          // Ở đây chúng ta giả định rằng đã gửi thành công
-          setTimeout(() => {
-            // Cập nhật tin nhắn tạm thời với ID thực tế
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `img-${Date.now()}` } : msg,
-              ),
-            )
             Alert.alert("Thành công", "Đã gửi hình ảnh thành công!")
-          }, 1000)
+          } catch (apiError) {
+            console.error("Error sending single image:", apiError)
+            Alert.alert("Lỗi", "Không thể gửi hình ảnh. Vui lòng thử lại.")
+          }
         }
       }
     } catch (err) {
@@ -891,45 +1292,93 @@ const ChatDetailScreen = ({ route, navigation }) => {
         // Show loading indicator
         Alert.alert("Đang xử lý", "Đang chuẩn bị gửi file...")
 
-        // Create attachment for the file
-        const attachment = {
-          url: file.uri,
-          type: file.mimeType || "application/octet-stream",
-          name: file.name || "file",
-          size: file.size || 0,
-          _id: Date.now() + Math.random().toString(),
-        }
-
-        // Optimistically add file message to UI
-        const currentTime = new Date()
-        const newMessage = {
-          messageId: `temp-${Date.now()}`,
-          content: "",
-          type: "file",
-          attachments: [attachment],
-          timestamp: currentTime,
-          senderId: currentUser?.userId,
-          isDeleted: false,
-          isRecalled: false,
-          createdAt: currentTime.toISOString(),
-        }
-
-        setMessages([newMessage, ...messages])
-
-        // In a real app, you would upload the file to your server here
-        // For now, we'll simulate a successful upload
-        setTimeout(() => {
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg.messageId === newMessage.messageId ? { ...newMessage, messageId: `file-${Date.now()}` } : msg,
-            ),
+        try {
+          // Gọi API để gửi file
+          const response = await messageService.sendFileMessage(
+            conversation.id,
+            file.uri,
+            file.name,
+            file.mimeType,
+            file.size,
           )
+
+          // Cập nhật UI với tin nhắn mới
+          setMessages([response, ...messages])
+
           Alert.alert("Thành công", `Đã gửi file "${file.name}" thành công!`)
-        }, 1000)
+        } catch (apiError) {
+          console.error("Error sending file via API:", apiError)
+          Alert.alert("Lỗi", "Không thể gửi file. Vui lòng thử lại.")
+        }
       }
     } catch (err) {
       console.error("Error picking document:", err)
       Alert.alert("Lỗi", `Không thể chọn file. Lỗi: ${err.message}`)
+    }
+  }
+
+  const handleCopyMessage = async (message) => {
+    try {
+      if (message.type === "text" || message.type === "emoji" || isSingleEmoji(message.content)) {
+        await Clipboard.setStringAsync(message.content)
+        Alert.alert("Đã sao chép", "Tin nhắn đã được sao chép vào bộ nhớ tạm.")
+      } else if (
+        message.type === "image" ||
+        (message.attachments && message.attachments.length > 0 && message.attachments[0].type.startsWith("image/"))
+      ) {
+        // For image messages, we need to download and share the image
+        const imageUrl = message.attachments ? message.attachments[0].url : message.imageUrl || message.content
+
+        // Show loading indicator
+        setLoading(true)
+
+        // Create a temporary file path
+        const fileUri = FileSystem.cacheDirectory + `temp_image_${Date.now()}.jpg`
+
+        // Download the image
+        const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri)
+
+        if (downloadResult.status === 200) {
+          // Check if sharing is available
+          const isSharingAvailable = await Sharing.isAvailableAsync()
+
+          if (isSharingAvailable) {
+            // This will open the share dialog which includes copy option on iOS
+            // On Android, it will open sharing options which includes copy to clipboard on most devices
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "image/jpeg",
+              dialogTitle: "Copy or Share Image",
+            })
+          } else {
+            // Fallback for devices without sharing capability
+            // Save to media library and notify user
+            const { status } = await MediaLibrary.requestPermissionsAsync()
+
+            if (status === "granted") {
+              await MediaLibrary.saveToLibraryAsync(fileUri)
+              Alert.alert("Đã lưu ảnh", "Ảnh đã được lưu vào thư viện của bạn. Bạn có thể sao chép nó từ đó.")
+            } else {
+              Alert.alert("Cần quyền truy cập", "Cần quyền truy cập để lưu ảnh")
+            }
+          }
+        } else {
+          Alert.alert("Lỗi", "Không thể tải xuống ảnh")
+        }
+
+        setLoading(false)
+      } else if (message.type === "imageGroup" && message.attachments && message.attachments.length > 0) {
+        // For image groups, copy the first image URL
+        const imageUrl = message.attachments[0].url
+        await Clipboard.setStringAsync(imageUrl)
+        Alert.alert("Đã sao chép", "Đường dẫn hình ảnh đầu tiên đã được sao chép vào bộ nhớ tạm.")
+      }
+
+      // Close the action menu
+      setShowMessageActions(false)
+    } catch (error) {
+      console.error("Copy error:", error)
+      Alert.alert("Lỗi", "Không thể sao chép tin nhắn")
+      setLoading(false)
     }
   }
 
@@ -948,11 +1397,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }
 
   // Check if the message is just a single emoji
-  const isSingleEmoji = (text) => {
-    // This regex matches a single emoji character
-    const emojiRegex = /^[\p{Emoji}]$/u
-    return emojiRegex.test(text)
-  }
 
   // Process messages to determine which ones should show avatar and time
   const processedMessages = React.useMemo(() => {
@@ -1012,8 +1456,22 @@ const ChatDetailScreen = ({ route, navigation }) => {
     if (item.isDeleted) {
       return (
         <View style={[styles.messageContainer, item.isMe ? styles.myMessage : styles.theirMessage]}>
-          <View style={[styles.messageBubble, styles.deletedMessageBubble]}>
+          {!item.isMe && item.isFirstInSequence && (
+            <Image
+              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
+              style={styles.messageAvatar}
+            />
+          )}
+          {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
+          <View
+            style={[
+              styles.messageBubble,
+              item.isMe ? styles.myBubble : styles.theirBubble,
+              styles.deletedMessageBubble,
+            ]}
+          >
             <Text style={styles.deletedMessageText}>Tin nhắn đã bị xóa</Text>
+            {item.showTime && <Text style={styles.messageTime}>{item.formattedTime}</Text>}
           </View>
         </View>
       )
@@ -1022,8 +1480,22 @@ const ChatDetailScreen = ({ route, navigation }) => {
     if (item.isRecalled) {
       return (
         <View style={[styles.messageContainer, item.isMe ? styles.myMessage : styles.theirMessage]}>
-          <View style={[styles.messageBubble, styles.recalledMessageBubble]}>
+          {!item.isMe && item.isFirstInSequence && (
+            <Image
+              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
+              style={styles.messageAvatar}
+            />
+          )}
+          {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
+          <View
+            style={[
+              styles.messageBubble,
+              item.isMe ? styles.myBubble : styles.theirBubble,
+              styles.recalledMessageBubble,
+            ]}
+          >
             <Text style={styles.recalledMessageText}>Tin nhắn đã bị thu hồi</Text>
+            {item.showTime && <Text style={styles.messageTime}>{item.formattedTime}</Text>}
           </View>
         </View>
       )
@@ -1220,7 +1692,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     )
   }
 
-  // Thay đổi hàm handleFilePress để mở file tốt hơn
   const handleFilePress = async (fileUrl, fileName, fileType) => {
     try {
       // Kiểm tra xem URL có hợp lệ không
@@ -1262,30 +1733,25 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  // Add these new functions to the ChatDetailScreen component
-  // Replace the handleCopyMessage function with this implementation
-  const handleCopyMessage = (message) => {
-    if (message.content) {
-      // Instead of using the native clipboard module, we'll just show an alert
-      // In a real app with proper native module setup, you would use Clipboard.setString(message.content)
-      Alert.alert("Đã sao chép", "Nội dung tin nhắn đã được sao chép vào bộ nhớ tạm.")
-    }
-    setShowMessageActions(false)
-  }
-
+  // In the ChatDetailScreen component, update the handleForwardMessage function to pass the message content
   const handleForwardMessage = (message) => {
     setShowMessageActions(false)
     setShowForwardScreen(true)
     setMessageToForward(message)
   }
 
+  // Update the handleSelectForwardContact function in the ChatDetailScreen component
   const handleSelectForwardContact = async (contact) => {
     try {
       setShowForwardScreen(false)
 
       if (messageToForward) {
-        // In a real app, this would call the API to forward the message
-        // For now, we'll just show a success message
+        // Get or create a conversation with this contact
+        const conversation = await messageService.getOrStartConversation(contact.id)
+
+        // Forward the message to this conversation
+        await messageService.forwardMessage(messageToForward.messageId, conversation.conversationId)
+
         Alert.alert("Đã chuyển tiếp", `Tin nhắn đã được chuyển tiếp đến ${contact.name}`)
       }
     } catch (err) {
@@ -1303,6 +1769,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#0068FF" />
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+          </View>
+        )}
       </SafeAreaView>
     )
   }
@@ -1338,7 +1809,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
           <View style={styles.headerInfo}>
             <Text style={styles.contactName}>{conversation.name}</Text>
-            <Text style={styles.status}>{conversation.online ? "Đang hoạt động" : "Hoạt động 5 phút trước"}</Text>
           </View>
         </TouchableOpacity>
 
@@ -1474,6 +1944,10 @@ const ChatDetailScreen = ({ route, navigation }) => {
           handleRecallMessage(selectedMessage)
           setShowMessageActions(false)
         }}
+        onDelete={() => {
+          handleDeleteMessage(selectedMessage)
+          setShowMessageActions(false)
+        }}
         onSaveToCloud={() => handleSaveToCloud(selectedMessage)}
         message={selectedMessage}
         isOwnMessage={selectedMessage?.senderId === currentUser?.userId}
@@ -1483,14 +1957,13 @@ const ChatDetailScreen = ({ route, navigation }) => {
         visible={showForwardScreen}
         onClose={() => setShowForwardScreen(false)}
         onSelectContact={handleSelectForwardContact}
+        messageToForward={messageToForward}
       />
     </SafeAreaView>
   )
 }
 
-// Update the styles object at the bottom of the file to improve the UI appearance
-
-// Replace the styles object with this enhanced version:
+// Update the styles to make the forwarded message input look better
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1851,9 +2324,40 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 10,
   },
   galleryCloseButton: {
     padding: 10,
+  },
+  galleryCounter: {
+    color: "#FFFFFF",
+    fontSize: 16,
+  },
+  galleryImageContainer: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  galleryImage: {
+    width: width,
+    height: height,
+  },
+  galleryControls: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  galleryControlButton: {
+    padding: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 25,
   },
   sendButtonDisabled: {
     backgroundColor: "rgba(0, 104, 255, 0.5)",
@@ -1918,7 +2422,243 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 104, 255, 0.5)",
   },
   myMessageTime: {
-    textAlign: "right", // Align the time to the right for my messages
+    textAlign: "right",
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+    zIndex: 1000,
+  },
+  forwardContainer: {
+    flex: 1,
+    backgroundColor: "#121212",
+  },
+  forwardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  forwardHeaderTitle: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  forwardTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  forwardSubtitle: {
+    color: "#A9A9A9",
+    fontSize: 14,
+  },
+  forwardSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#262626",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  forwardSearchIcon: {
+    marginRight: 8,
+  },
+  forwardSearchInput: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  forwardScrollView: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  forwardSectionContainer: {
+    marginBottom: 20,
+  },
+  forwardSectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  forwardContactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333333",
+  },
+  forwardContactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  forwardContactInitial: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  forwardContactName: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 16,
+  },
+  forwardCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#8E8E93",
+    backgroundColor: "transparent",
+  },
+  forwardCheckboxSelected: {
+    backgroundColor: "#0068FF",
+    borderColor: "#0068FF",
+  },
+  forwardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#333333",
+  },
+  forwardInputContainer: {
+    flex: 1,
+    backgroundColor: "#262626",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 8,
+  },
+  forwardMessageInput: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 16,
+    paddingVertical: 10,
+    backgroundColor: "#2C2C2E",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    minHeight: 60,
+    textAlignVertical: "center",
+  },
+  forwardSendButton: {
+    backgroundColor: "#0068FF",
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  forwardSendButtonDisabled: {
+    backgroundColor: "rgba(0, 104, 255, 0.5)",
+  },
+  alphabetHeader: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  groupAvatarContainer: {
+    marginRight: 12,
+  },
+  groupAvatarsStack: {
+    width: 40,
+    height: 40,
+    position: "relative",
+  },
+  groupStackedAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    position: "absolute",
+    borderWidth: 1,
+    borderColor: "#121212",
+  },
+  groupMemberCount: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  groupMemberCountText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  seeMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingVertical: 10,
+    color: "#0068FF",
+  },
+  seeMoreText: {
+    color: "#0068FF",
+    fontSize: 14,
+    marginRight: 4,
+  },
+  forwardLoadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  forwardErrorContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  forwardErrorText: {
+    color: "#FF3B30",
+    fontSize: 16,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  forwardRetryButton: {
+    backgroundColor: "#0068FF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  forwardRetryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  deletedMessageBubble: {
+    backgroundColor: "#333333",
+    alignSelf: "flex-start", // This ensures the bubble only takes up as much width as needed
+    maxWidth: "80%", // Limit the width to maintain readability
+  },
+  deletedMessageText: {
+    color: "#A9A9A9",
+    fontStyle: "italic",
+    fontSize: 14,
+  },
+  recalledMessageBubble: {
+    backgroundColor: "#333333",
+    alignSelf: "flex-start", // This ensures the bubble only takes up as much width as needed
+    maxWidth: "80%", // Limit the width to maintain readability
+  },
+  recalledMessageText: {
+    color: "#A9A9A9",
+    fontStyle: "italic",
+    fontSize: 14,
   },
 })
 
