@@ -19,6 +19,7 @@ import SearchScreen from "./Screens/SearchScreen"
 import ChatDetailScreen from "./Screens/ChatDetailScreen"
 import { NavigationContainer } from "@react-navigation/native"
 import { createStackNavigator } from "@react-navigation/stack"
+
 import { AuthProvider } from "./context/AuthContext"
 import FriendRequestsScreen from "./Screens/FriendRequestsScreen"
 
@@ -53,4 +54,5 @@ export default function App() {
       </NavigationContainer>
     </AuthProvider>
   )
+
 }
