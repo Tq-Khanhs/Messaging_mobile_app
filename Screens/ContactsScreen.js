@@ -8,7 +8,6 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  TextInput,
   StatusBar,
   SectionList,
   SafeAreaView,
@@ -20,11 +19,13 @@ import { friendService } from "../services/friendService"
 
 // Xóa CONTACTS_DATA mẫu và thay thế bằng state
 
+
 const GROUPS_DATA = [
   {
     id: "1",
     name: "Nhóm 12 _ CNM",
     lastMessage: "Bạn: Phần backend ai th���c hiện z á @All",
+
     time: "30 phút",
     memberCount: 5,
     avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
@@ -46,6 +47,7 @@ const GROUPS_DATA = [
     avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
   },
 ]
+
 
 const ContactsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("friends")
@@ -149,6 +151,7 @@ const ContactsScreen = ({ navigation }) => {
     },
   ]
 
+
   const renderSpecialSection = ({ item }) => (
     <TouchableOpacity
       style={styles.specialSection}
@@ -157,6 +160,7 @@ const ContactsScreen = ({ navigation }) => {
           navigation.navigate("FriendRequestsScreen")
         } else if (item.id === "phone_contacts") {
           // Xử lý khi nhấn vào danh bạ máy
+
         }
       }}
     >
@@ -230,7 +234,7 @@ const ContactsScreen = ({ navigation }) => {
   )
 
   const renderCreateGroupButton = () => (
-    <TouchableOpacity style={styles.createGroupButton}>
+    <TouchableOpacity style={styles.createGroupButton} onPress={() => navigation.navigate("CreateGroupScreen")}>
       <View style={styles.createGroupIcon}>
         <Ionicons name="people" size={24} color="#0068FF" />
         <View style={styles.plusIconContainer}>
@@ -257,10 +261,15 @@ const ContactsScreen = ({ navigation }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
+        <TouchableOpacity
+          style={styles.searchContainer}
+          onPress={() => navigation.navigate("ContactSearch")}
+          activeOpacity={0.7}
+        >
           <Ionicons name="search" size={20} color="#888" />
           <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" />
-        </View>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.headerButton}>
           <Ionicons name="person-add" size={22} color="#FFF" />
         </TouchableOpacity>
@@ -303,6 +312,7 @@ const ContactsScreen = ({ navigation }) => {
                 <Text style={[styles.filterText, activeFilter === "all" && styles.activeFilterText]}>
                   Tất cả {friendsData.reduce((total, section) => total + section.data.length, 0)}
                 </Text>
+
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, activeFilter === "recent" && styles.activeFilterButton]}
@@ -344,6 +354,7 @@ const ContactsScreen = ({ navigation }) => {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
               />
             )}
+
           </>
         ) : (
           <>
@@ -758,6 +769,7 @@ const styles = StyleSheet.create({
   addFriendButtonText: {
     color: "#FFF",
     fontSize: 16,
+
   },
 })
 

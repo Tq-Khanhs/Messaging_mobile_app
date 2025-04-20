@@ -12,9 +12,22 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const InfoModal = ({ contact, visible, onClose }) => {
+const InfoModal = ({ contact, visible, onClose, navigation }) => {
   const [isCloseFriend, setIsCloseFriend] = useState(false);
-
+  
+  const handleProfileNavigation = () => {
+    // Close the current modal first
+    onClose()
+    // Navigate to ContactProfile with contact data
+    navigation.navigate("ContactProfile", {
+      contact: {
+        id: contact?.id,
+        name: contact?.fullname || contact?.name,
+        avatar: contact?.avatar,
+        online: contact?.online || false,
+      },
+    })
+  }
   // Sample shared media
   const sharedMedia = [
     { id: 1, type: 'image', url: 'https://randomuser.me/api/portraits/men/1.jpg' },
@@ -66,12 +79,16 @@ const InfoModal = ({ contact, visible, onClose }) => {
               <Text style={styles.actionText}>Tìm tin nhắn</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleProfileNavigation} 
+            >
               <View style={styles.actionIconContainer}>
                 <Icon name="person" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.actionText}>Trang cá nhân</Text>
             </TouchableOpacity>
+
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
@@ -274,3 +291,4 @@ const styles = StyleSheet.create({
 });
 
 export default InfoModal;
+
