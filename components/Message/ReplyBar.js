@@ -5,15 +5,29 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 const ReplyBar = ({ message, onCancel, onScrollToMessage }) => {
   if (!message) return null;
   
+  // Truncate text to first 10 characters + "..."
+  const truncateText = (text) => {
+    if (!text) return "";
+    return text.length > 10 ? text.substring(0, 10) + '...' : text;
+  };
+  
   // Get preview text based on message type
   const getPreviewText = () => {
     switch (message.type) {
       case 'text':
-        return message.text;
+        return truncateText(message.text);
       case 'sticker':
         return '[Sticker]';
       case 'voice':
         return '[Voice Message]';
+      case 'image':
+        return '[Hình ảnh]';
+      case 'video':
+        return '[Video]';
+      case 'document':
+        return '[Tài liệu]';
+      case 'location':
+        return '[Vị trí]';
       default:
         return '[Media]';
     }

@@ -52,6 +52,7 @@ export default function App() {
           <Stack.Screen name="FriendRequestsScreen" component={FriendRequestsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
+
     </AuthProvider>
   )
 

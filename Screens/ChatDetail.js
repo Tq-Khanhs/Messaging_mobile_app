@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
@@ -11,7 +12,8 @@ import {
   Clipboard,
   ToastAndroid,
   Platform,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import VoiceRecorder from '../components/Voice/VoiceRecorder';
@@ -32,6 +34,7 @@ const ChatDetail = ({ route, navigation }) => {
   
   // Refs
   const flatListRef = useRef(null);
+  const inputRef = useRef(null);
   
   // Current date for comparison
   const currentDate = new Date();
@@ -231,163 +234,6 @@ const ChatDetail = ({ route, navigation }) => {
     setReplyingToMessage(null);
   };
 
-  const handleSendVoice = (duration) => {
-    // Get the current time
-    const currentTime = new Date();
-    
-    const newMessage = {
-      id: messages.length + 1,
-      voiceDuration: duration,
-      timestamp: currentTime,
-      isMe: true,
-      type: 'voice',
-      sender: {
-        id: 1,
-        name: "Tôi",
-        avatar: "https://randomuser.me/api/portraits/men/2.jpg"
-      },
-      // Add reply information if replying to a message
-      replyTo: replyingToMessage
-    };
-    
-    setMessages([newMessage, ...messages]);
-    setShowVoiceRecorder(false);
-    setReplyingToMessage(null);
-  };
-
-  const handleSendImage = (image) => {
-    // Get the current time
-    const currentTime = new Date();
-    
-    const newMessage = {
-      id: messages.length + 1,
-      imageUri: image.uri,
-      timestamp: currentTime,
-      isMe: true,
-      type: 'image',
-      sender: {
-        id: 1,
-        name: "Tôi",
-        avatar: "https://randomuser.me/api/portraits/men/2.jpg"
-      },
-      // Add reply information if replying to a message
-      replyTo: replyingToMessage
-    };
-    
-    setMessages([newMessage, ...messages]);
-    setShowAttachmentOptions(false);
-    setReplyingToMessage(null);
-  };
-
-  const handleSendVideo = (video) => {
-    // Get the current time
-    const currentTime = new Date();
-    
-    const newMessage = {
-      id: messages.length + 1,
-      videoUri: video.uri,
-      timestamp: currentTime,
-      isMe: true,
-      type: 'video',
-      sender: {
-        id: 1,
-        name: "Tôi",
-        avatar: "https://randomuser.me/api/portraits/men/2.jpg"
-      },
-      // Add reply information if replying to a message
-      replyTo: replyingToMessage
-    };
-    
-    setMessages([newMessage, ...messages]);
-    setShowAttachmentOptions(false);
-    setReplyingToMessage(null);
-  };
-
-  const handleSendDocument = (document) => {
-    // Get the current time
-    const currentTime = new Date();
-    
-    const newMessage = {
-      id: messages.length + 1,
-      documentUri: document.uri,
-      documentName: document.name,
-      documentSize: document.size,
-      timestamp: currentTime,
-      isMe: true,
-      type: 'document',
-      sender: {
-        id: 1,
-        name: "Tôi",
-        avatar: "https://randomuser.me/api/portraits/men/2.jpg"
-      },
-      // Add reply information if replying to a message
-      replyTo: replyingToMessage
-    };
-    
-    setMessages([newMessage, ...messages]);
-    setShowAttachmentOptions(false);
-    setReplyingToMessage(null);
-  };
-
-  const handleSendLocation = (location) => {
-    // Get the current time
-    const currentTime = new Date();
-    
-    const newMessage = {
-      id: messages.length + 1,
-      location: {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      },
-      timestamp: currentTime,
-      isMe: true,
-      type: 'location',
-      sender: {
-        id: 1,
-        name: "Tôi",
-        avatar: "https://randomuser.me/api/portraits/men/2.jpg"
-      },
-      // Add reply information if replying to a message
-      replyTo: replyingToMessage
-    };
-    
-    setMessages([newMessage, ...messages]);
-    setShowAttachmentOptions(false);
-    setReplyingToMessage(null);
-  };
-
-  const toggleAttachmentOptions = () => {
-    setShowAttachmentOptions(!showAttachmentOptions);
-    if (showAttachmentOptions) {
-      setShowStickerPicker(false);
-    }
-    if (isKeyboardVisible) {
-      Keyboard.dismiss();
-    }
-  };
-
-  const toggleVoiceRecorder = () => {
-    setShowVoiceRecorder(!showVoiceRecorder);
-    if (!showVoiceRecorder) {
-      setShowStickerPicker(false);
-      setShowAttachmentOptions(false);
-      if (isKeyboardVisible) {
-        Keyboard.dismiss();
-      }
-    }
-  };
-
-  const toggleStickerPicker = () => {
-    setShowStickerPicker(!showStickerPicker);
-    if (!showStickerPicker) {
-      setShowVoiceRecorder(false);
-      setShowAttachmentOptions(false);
-      if (isKeyboardVisible) {
-        Keyboard.dismiss();
-      }
-    }
-  };
-
   const handleMessagePress = (messageId) => {
     // Toggle selected message for time display
     if (selectedMessageId === messageId) {
@@ -440,30 +286,13 @@ const ChatDetail = ({ route, navigation }) => {
   };
 
   const handleReactToMessage = (messageId, reactionType) => {
-    // Add reaction to the message
+    // Update the message with the reaction
     setMessages(messages.map(message => {
       if (message.id === messageId) {
-        // Initialize reactions array if it doesn't exist
-        const reactions = message.reactions || [];
-        
-        // Check if user already reacted with this type
-        const existingReactionIndex = reactions.findIndex(
-          r => r.userId === 1 && r.type === reactionType
-        );
-        
-        if (existingReactionIndex >= 0) {
-          // Remove the reaction if it already exists
-          reactions.splice(existingReactionIndex, 1);
-        } else {
-          // Add the new reaction
-          reactions.push({
-            userId: 1,
-            type: reactionType,
-            timestamp: new Date()
-          });
-        }
-        
-        return { ...message, reactions };
+        // If the message already has this reaction, remove it
+        // Otherwise, set the new reaction (replacing any existing one)
+        const newReaction = message.reaction === reactionType ? null : reactionType;
+        return { ...message, reaction: newReaction };
       }
       return message;
     }));
@@ -552,21 +381,15 @@ const ChatDetail = ({ route, navigation }) => {
     });
   }, [messages, selectedMessageId]);
 
-  const handleCall = () => {
-    navigation.navigate('Call', { contact });
-  };
-
-  const handleVideoCall = () => {
-    navigation.navigate('VideoCall', { contact });
-  };
-
-  // Input ref for focusing
-  const inputRef = useRef(null);
-
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor="#1E1E1E" barStyle="light-content" />
+      
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
           <Icon name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         
@@ -583,13 +406,22 @@ const ChatDetail = ({ route, navigation }) => {
         </View>
         
         <View style={styles.headerRightIcons}>
-          <TouchableOpacity style={styles.iconButton} onPress={handleCall}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={() => navigation.navigate('Call', { contact })}
+          >
             <Icon name="call" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handleVideoCall}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={() => navigation.navigate('VideoCall', { contact })}
+          >
             <Icon name="videocam" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={() => setShowInfoModal(true)}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={() => setShowInfoModal(true)}
+          >
             <Icon name="info" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -615,26 +447,6 @@ const ChatDetail = ({ route, navigation }) => {
         }}
       />
 
-      {showAttachmentOptions && (
-        <MoreActions 
-          onSendImage={handleSendImage}
-          onSendVideo={handleSendVideo}
-          onSendDocument={handleSendDocument}
-          onSendLocation={handleSendLocation}
-        />
-      )}
-
-      {showVoiceRecorder && (
-        <VoiceRecorder 
-          onSend={handleSendVoice} 
-          onCancel={() => setShowVoiceRecorder(false)} 
-        />
-      )}
-
-      {showStickerPicker && (
-        <StickerPicker onStickerSelect={handleSendSticker} />
-      )}
-
       {/* Reply bar */}
       {replyingToMessage && (
         <ReplyBar 
@@ -645,8 +457,19 @@ const ChatDetail = ({ route, navigation }) => {
       )}
 
       <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.attachmentButton} onPress={toggleAttachmentOptions}>
-          <Icon name="more-horiz" size={28} color="#0084FF" />
+        <TouchableOpacity 
+          style={styles.attachmentButton} 
+          onPress={() => {
+            setShowAttachmentOptions(!showAttachmentOptions);
+            if (showAttachmentOptions) {
+              setShowStickerPicker(false);
+            }
+            if (isKeyboardVisible) {
+              Keyboard.dismiss();
+            }
+          }}
+        >
+          <Icon name="add" size={28} color="#0084FF" />
         </TouchableOpacity>
 
         <TextInput
@@ -665,17 +488,158 @@ const ChatDetail = ({ route, navigation }) => {
             <Icon name="send" size={24} color="#0084FF" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.voiceButton} onPress={toggleVoiceRecorder}>
-            <Icon name="keyboard-voice" size={28} color="#0084FF" />
-          </TouchableOpacity>
-        )}
+          <>
+            <TouchableOpacity 
+              style={styles.voiceButton} 
+              onPress={() => {
+                setShowVoiceRecorder(!showVoiceRecorder);
+                if (!showVoiceRecorder) {
+                  setShowStickerPicker(false);
+                  setShowAttachmentOptions(false);
+                  if (isKeyboardVisible) {
+                    Keyboard.dismiss();
+                  }
+                }
+              }}
+            >
+              <Icon name="keyboard-voice" size={28} color="#0084FF" />
+            </TouchableOpacity>
 
-        {!isKeyboardVisible && (
-          <TouchableOpacity style={styles.stickerButton} onPress={toggleStickerPicker}>
-            <Icon name="insert-emoticon" size={26} color="#FFD700" />
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.stickerButton} 
+              onPress={() => {
+                setShowStickerPicker(!showStickerPicker);
+                if (!showStickerPicker) {
+                  setShowVoiceRecorder(false);
+                  setShowAttachmentOptions(false);
+                  if (isKeyboardVisible) {
+                    Keyboard.dismiss();
+                  }
+                }
+              }}
+            >
+              <Icon name="insert-emoticon" size={26} color="#FFD700" />
+            </TouchableOpacity>
+          </>
         )}
       </View>
+
+      {/* Attachment options */}
+      {showAttachmentOptions && (
+        <MoreActions 
+          onSendImage={(image) => {
+            const currentTime = new Date();
+            const newMessage = {
+              id: messages.length + 1,
+              imageUri: image.uri,
+              timestamp: currentTime,
+              isMe: true,
+              type: 'image',
+              sender: {
+                id: 1,
+                name: "Tôi",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg"
+              },
+              replyTo: replyingToMessage
+            };
+            setMessages([newMessage, ...messages]);
+            setShowAttachmentOptions(false);
+            setReplyingToMessage(null);
+          }}
+          onSendVideo={(video) => {
+            const currentTime = new Date();
+            const newMessage = {
+              id: messages.length + 1,
+              videoUri: video.uri,
+              timestamp: currentTime,
+              isMe: true,
+              type: 'video',
+              sender: {
+                id: 1,
+                name: "Tôi",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg"
+              },
+              replyTo: replyingToMessage
+            };
+            setMessages([newMessage, ...messages]);
+            setShowAttachmentOptions(false);
+            setReplyingToMessage(null);
+          }}
+          onSendDocument={(document) => {
+            const currentTime = new Date();
+            const newMessage = {
+              id: messages.length + 1,
+              documentUri: document.uri,
+              documentName: document.name,
+              timestamp: currentTime,
+              isMe: true,
+              type: 'document',
+              sender: {
+                id: 1,
+                name: "Tôi",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg"
+              },
+              replyTo: replyingToMessage
+            };
+            setMessages([newMessage, ...messages]);
+            setShowAttachmentOptions(false);
+            setReplyingToMessage(null);
+          }}
+          onSendLocation={(location) => {
+            const currentTime = new Date();
+            const newMessage = {
+              id: messages.length + 1,
+              location: {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              },
+              timestamp: currentTime,
+              isMe: true,
+              type: 'location',
+              sender: {
+                id: 1,
+                name: "Tôi",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg"
+              },
+              replyTo: replyingToMessage
+            };
+            setMessages([newMessage, ...messages]);
+            setShowAttachmentOptions(false);
+            setReplyingToMessage(null);
+          }}
+        />
+      )}
+
+      {/* Voice recorder */}
+      {showVoiceRecorder && (
+        <VoiceRecorder 
+          onSend={(duration) => {
+            const currentTime = new Date();
+            const newMessage = {
+              id: messages.length + 1,
+              voiceDuration: duration,
+              timestamp: currentTime,
+              isMe: true,
+              type: 'voice',
+              sender: {
+                id: 1,
+                name: "Tôi",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg"
+              },
+              replyTo: replyingToMessage
+            };
+            setMessages([newMessage, ...messages]);
+            setShowVoiceRecorder(false);
+            setReplyingToMessage(null);
+          }} 
+          onCancel={() => setShowVoiceRecorder(false)} 
+        />
+      )}
+
+      {/* Sticker picker */}
+      {showStickerPicker && (
+        <StickerPicker onStickerSelect={handleSendSticker} />
+      )}
 
       {/* Message Options Modal */}
       <MessageOptionsModal 
@@ -709,10 +673,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 12,
     backgroundColor: '#1E1E1E',
     borderBottomWidth: 0.5,
     borderBottomColor: '#333333',
+  },
+  backButton: {
+    padding: 5,
   },
   chatBackground: {
     backgroundColor: '#121212',
@@ -721,7 +688,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginHorizontal: 15,
+    marginHorizontal: 12,
     borderWidth: 1,
     borderColor: '#333',
   },
@@ -743,9 +710,11 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     marginLeft: 15,
+    padding: 5,
   },
   messagesList: {
     padding: 10,
+    paddingBottom: 20,
   },
   inputContainer: {
     flexDirection: 'row',
