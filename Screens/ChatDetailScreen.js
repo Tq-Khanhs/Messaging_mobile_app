@@ -871,13 +871,7 @@ const ForwardScreen = ({ visible, onClose, contacts, onSelectContact, messageToF
 
 // Update the ChatDetailScreen to handle group conversations
 const ChatDetailScreen = ({ route, navigation }) => {
-  const { conversation } = route.params || {
-    name: "Nguyễn Minh Đức",
-    avatar: require("../assets/icon.png"),
-    online: false,
-    isGroup: false,
-    members: [],
-  }
+  const { conversation } = route.params 
 
   // Add this function to render the group avatar in the header
   const renderHeaderAvatar = () => {
@@ -951,7 +945,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
   // Yêu cầu quyền truy cập vào thư viện ảnh và tệp tin
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       // Yêu cầu quyền truy cập vào thư viện ảnh
       const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (mediaLibraryStatus !== "granted") {
@@ -1925,7 +1919,16 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
         <TouchableOpacity
           style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-          onPress={() => Alert.alert("Thông tin", `Xem thông tin của ${conversation.name}`)}
+          onPress={() => {
+            if (conversation.isGroup) {
+              navigation.navigate("GroupInfoScreen", {
+                conversation: conversation,
+              })
+            } else {
+              // For one-on-one conversations, you might want to show user profile instead
+              Alert.alert("Thông tin", `Xem thông tin của ${conversation.name}`)
+            }
+          }}
         >
           {renderHeaderAvatar()}
 
@@ -1946,7 +1949,18 @@ const ChatDetailScreen = ({ route, navigation }) => {
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="videocam-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton}
+            onPress={() => {
+              if (conversation.isGroup) {
+                navigation.navigate("GroupInfoScreen", {
+                  conversation: conversation,
+                })
+              } else {
+                // For one-on-one conversations, show a different menu or options
+                Alert.alert("Tùy chọn", "Các tùy chọn cho cuộc trò chuyện")
+              }
+            }}
+          >
             <Ionicons name="ellipsis-vertical" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
