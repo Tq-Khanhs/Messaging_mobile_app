@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { formatMessageTime } from "../utils/timeUtils"
 import { messageService } from "../services/messageService"
 import { authService } from "../services/authService"
+import { userService } from "../services/userService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
@@ -868,11 +869,60 @@ const ForwardScreen = ({ visible, onClose, contacts, onSelectContact, messageToF
   )
 }
 
+// Update the ChatDetailScreen to handle group conversations
 const ChatDetailScreen = ({ route, navigation }) => {
   const { conversation } = route.params || {
     name: "Nguyễn Minh Đức",
     avatar: require("../assets/icon.png"),
     online: false,
+    isGroup: false,
+    members: [],
+  }
+
+  // Add this function to render the group avatar in the header
+  const renderHeaderAvatar = () => {
+    if (!conversation.isGroup) {
+      // Regular one-on-one conversation
+      return (
+        <Image
+          source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
+          style={styles.headerAvatar}
+        />
+      )
+    }
+
+    // Group conversation
+    if (conversation.avatar) {
+      // Group with custom avatar
+      return <Image source={{ uri: conversation.avatar }} style={styles.headerAvatar} />
+    }
+
+    // Group without custom avatar - show member avatars in a grid
+    return (
+      <View style={styles.headerGroupAvatarGrid}>
+        {conversation.members &&
+          conversation.members
+            .slice(0, 4)
+            .map((member, index) => (
+              <Image
+                key={member.userId || index}
+                source={member.avatarUrl ? { uri: member.avatarUrl } : require("../assets/icon.png")}
+                style={[
+                  styles.headerGroupMemberAvatar,
+                  index === 0 && styles.headerTopLeftAvatar,
+                  index === 1 && styles.headerTopRightAvatar,
+                  index === 2 && styles.headerBottomLeftAvatar,
+                  index === 3 && styles.headerBottomRightAvatar,
+                ]}
+              />
+            ))}
+        {(!conversation.members || conversation.members.length === 0) && (
+          <View style={styles.headerGroupAvatarPlaceholder}>
+            <Ionicons name="people" size={20} color="#FFFFFF" />
+          </View>
+        )}
+      </View>
+    )
   }
 
   // Refs
@@ -896,6 +946,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [showForwardScreen, setShowForwardScreen] = useState(false)
   const [messageToForward, setMessageToForward] = useState(null)
+  // Add a new state to cache user details
+  const [userCache, setUserCache] = useState({})
 
   // Yêu cầu quyền truy cập vào thư viện ảnh và tệp tin
   useEffect(() => {
@@ -987,6 +1039,30 @@ const ChatDetailScreen = ({ route, navigation }) => {
     } catch (err) {
       console.error("Error fetching messages:", err)
       setError("Failed to load messages")
+    }
+  }
+
+  // Add a function to fetch user details by userId
+  const fetchUserDetails = async (userId) => {
+    // If we already have this user in cache, return it
+    if (userCache[userId]) {
+      return userCache[userId]
+    }
+
+    try {
+      // Fetch user details from API
+      const user = await userService.getUserById(userId)
+
+      // Update cache with the new user
+      setUserCache((prevCache) => ({
+        ...prevCache,
+        [userId]: user,
+      }))
+
+      return user
+    } catch (error) {
+      console.error(`Error fetching user ${userId}:`, error)
+      return null
     }
   }
 
@@ -1396,8 +1472,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  // Check if the message is just a single emoji
-
   // Process messages to determine which ones should show avatar and time
   const processedMessages = React.useMemo(() => {
     if (!messages || !currentUser) return []
@@ -1452,6 +1526,21 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }, [messages, selectedMessageId, currentUser])
 
   const renderMessage = ({ item }) => {
+    // In the renderMessage function, add a special case for system messages
+    // Add this before the "If message is deleted or recalled" check
+
+    // Handle system messages
+    if (item.type === "system") {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <View style={styles.systemMessageBubble}>
+            <Text style={styles.systemMessageText}>{item.content}</Text>
+            {item.showTime && <Text style={styles.systemMessageTime}>{item.formattedTime}</Text>}
+          </View>
+        </View>
+      )
+    }
+
     // If message is deleted or recalled, show special message
     if (item.isDeleted) {
       return (
@@ -1512,10 +1601,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
           onLongPress={() => handleLongPress(item)}
         >
           {!item.isMe && item.isFirstInSequence && (
-            <Image
-              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-              style={styles.messageAvatar}
-            />
+            <MessageAvatar senderId={item.senderId} isGroup={conversation.isGroup} />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
 
@@ -1551,10 +1637,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
           onLongPress={() => handleLongPress(item)}
         >
           {!item.isMe && item.isFirstInSequence && (
-            <Image
-              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-              style={styles.messageAvatar}
-            />
+            <MessageAvatar senderId={item.senderId} isGroup={conversation.isGroup} />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
 
@@ -1602,10 +1685,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
           onLongPress={() => handleLongPress(item)}
         >
           {!item.isMe && item.isFirstInSequence && (
-            <Image
-              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-              style={styles.messageAvatar}
-            />
+            <MessageAvatar senderId={item.senderId} isGroup={conversation.isGroup} />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
 
@@ -1644,10 +1724,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         activeOpacity={0.8}
       >
         {!item.isMe && item.isFirstInSequence && (
-          <Image
-            source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-            style={styles.messageAvatar}
-          />
+          <MessageAvatar senderId={item.senderId} isGroup={conversation.isGroup} />
         )}
         {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
 
@@ -1689,6 +1766,53 @@ const ChatDetailScreen = ({ route, navigation }) => {
           )}
         </View>
       </TouchableOpacity>
+    )
+  }
+
+  // Create a component to handle message avatars with API fetching
+  const MessageAvatar = ({ senderId, isGroup }) => {
+    const [sender, setSender] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+      // Only fetch user details if this is a group conversation
+      if (isGroup && senderId) {
+        const getSender = async () => {
+          try {
+            setLoading(true)
+            const user = await fetchUserDetails(senderId)
+            setSender(user)
+          } catch (error) {
+            console.error(`Error fetching sender ${senderId}:`, error)
+          } finally {
+            setLoading(false)
+          }
+        }
+        getSender()
+      }
+    }, [senderId, isGroup])
+
+    if (!isGroup) {
+      // For one-on-one conversations, just show the conversation avatar
+      return (
+        <Image
+          source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
+          style={styles.messageAvatar}
+        />
+      )
+    }
+
+    if (loading) {
+      // Show a placeholder while loading
+      return <View style={[styles.messageAvatar, { backgroundColor: "#333" }]} />
+    }
+
+    // For group conversations, show the sender's avatar
+    return (
+      <Image
+        source={sender?.avatarUrl ? { uri: sender.avatarUrl } : require("../assets/icon.png")}
+        style={styles.messageAvatar}
+      />
     )
   }
 
@@ -1789,6 +1913,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     )
   }
 
+  // Update the header section in the return statement
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
@@ -1802,13 +1927,15 @@ const ChatDetailScreen = ({ route, navigation }) => {
           style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
           onPress={() => Alert.alert("Thông tin", `Xem thông tin của ${conversation.name}`)}
         >
-          <Image
-            source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-            style={styles.headerAvatar}
-          />
+          {renderHeaderAvatar()}
 
           <View style={styles.headerInfo}>
             <Text style={styles.contactName}>{conversation.name}</Text>
+            {conversation.isGroup && (
+              <Text style={styles.groupMembersCount}>
+                {conversation.members ? `${conversation.members.length} thành viên` : ""}
+              </Text>
+            )}
           </View>
         </TouchableOpacity>
 
@@ -2659,6 +2786,108 @@ const styles = StyleSheet.create({
     color: "#A9A9A9",
     fontStyle: "italic",
     fontSize: 14,
+  },
+  headerGroupAvatarGrid: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#262626",
+    overflow: "hidden",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerGroupMemberAvatar: {
+    width: 20,
+    height: 20,
+  },
+  headerTopLeftAvatar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+  },
+  headerTopRightAvatar: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+  },
+  headerBottomLeftAvatar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+  },
+  headerBottomRightAvatar: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+  },
+  groupMembersCount: {
+    color: "#A9A9A9",
+    fontSize: 13,
+  },
+  headerGroupAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#262626",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  systemMessageContainer: {
+    alignItems: "center",
+    marginVertical: 8,
+    paddingHorizontal: 16,
+  },
+  systemMessageBubble: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    maxWidth: "80%",
+  },
+  systemMessageText: {
+    color: "#A9A9A9",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  systemMessageTime: {
+    fontSize: 10,
+    color: "rgba(169, 169, 169, 0.7)",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  fileContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+  },
+  fileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#444",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  fileExtension: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileName: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  fileSize: {
+    color: "#AAA",
+    fontSize: 12,
+    marginTop: 2,
   },
 })
 

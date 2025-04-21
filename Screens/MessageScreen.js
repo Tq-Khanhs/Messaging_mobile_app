@@ -24,6 +24,13 @@ const MessagesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
+  // Add this new state for the dropdown menu
+  const [showDropdownMenu, setShowDropdownMenu] = useState(false)
+
+  // Add this function to toggle the dropdown menu
+  const toggleDropdownMenu = () => {
+    setShowDropdownMenu(!showDropdownMenu)
+  }
 
   useEffect(() => {
     const loadUserAndConversations = async () => {
@@ -84,7 +91,7 @@ const MessagesScreen = ({ navigation }) => {
     return () => clearInterval(intervalId)
   }, [])
 
-  // Update the fetchConversations function to properly get conversations from the API
+  // Update the fetchConversations function to fetch group details for group conversations
   const fetchConversations = async () => {
     try {
       // Check if token exists before making the request
@@ -98,7 +105,37 @@ const MessagesScreen = ({ navigation }) => {
       console.log("Fetching conversations...")
       const data = await messageService.getConversations()
       console.log(`Received ${data.length} conversations`)
-      setConversations(data)
+
+      // Process conversations to ensure they have all required fields
+      const processedConversations = await Promise.all(
+        data.map(async (conversation) => {
+          // For group conversations, fetch group details
+          if (conversation.isGroup) {
+            try {
+              // Fetch group details using conversationId
+              const groupDetails = await messageService.getGroupByConversationId(conversation.conversationId)
+
+              return {
+                ...conversation,
+                groupName: groupDetails?.name || "Nhóm chat",
+                groupDescription: groupDetails?.description || "",
+                groupAvatarUrl: groupDetails?.avatarUrl,
+                members: groupDetails?.members || [],
+              }
+            } catch (err) {
+              console.error("Error fetching group details:", err)
+              return {
+                ...conversation,
+                groupName: conversation.groupName || "Nhóm chat",
+                members: conversation.members || [],
+              }
+            }
+          }
+          return conversation
+        }),
+      )
+
+      setConversations(processedConversations)
       setError(null)
     } catch (err) {
       console.error("Error fetching conversations:", err)
@@ -120,7 +157,7 @@ const MessagesScreen = ({ navigation }) => {
     }
   }
 
-  // Update the handleConversationPress function to properly navigate to the chat detail screen
+  // Update the handleConversationPress function to pass group information
   const handleConversationPress = async (conversation) => {
     // Mark conversation as read when opening it
     if (conversation.unreadCount > 0) {
@@ -143,17 +180,24 @@ const MessagesScreen = ({ navigation }) => {
 
     console.log("Navigating to conversation:", {
       conversationId: conversation.conversationId,
-      name: conversation.participant?.fullName || "Unknown",
+      name: conversation.isGroup
+        ? conversation.groupName || "Nhóm chat"
+        : conversation.participant?.fullName || "Unknown",
+      isGroup: conversation.isGroup,
     })
 
-    // Navigate to chat detail screen with the correct conversation ID
+    // Navigate to chat detail screen with the correct conversation ID and group info
     navigation.navigate("ChatDetail", {
       conversation: {
         id: conversation.conversationId,
-        name: conversation.participant?.fullName || "Unknown",
-        avatar: conversation.participant?.avatarUrl,
+        name: conversation.isGroup
+          ? conversation.groupName || "Nhóm chat"
+          : conversation.participant?.fullName || "Unknown",
+        avatar: conversation.isGroup ? conversation.groupAvatarUrl : conversation.participant?.avatarUrl,
         online: false,
         isGroup: conversation.isGroup || false,
+        members: conversation.members || [],
+        description: conversation.isGroup ? conversation.groupDescription : "",
       },
     })
   }
@@ -187,24 +231,53 @@ const MessagesScreen = ({ navigation }) => {
     }
   }
 
+  // Update the renderConversationItem function to properly display group information
   const renderConversationItem = ({ item }) => (
     <TouchableOpacity style={styles.conversationItem} onPress={() => handleConversationPress(item)}>
       <View style={styles.avatarContainer}>
         {item.isGroup ? (
-          <>
-            <Image
-              source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
-              style={styles.avatar}
-            />
-            <View style={styles.memberCountBadge}>
-              <Text style={styles.memberCountText}>{item.memberCount || 2}</Text>
+          item.groupAvatarUrl ? (
+            // Group with custom avatar
+            <Image source={{ uri: item.groupAvatarUrl }} style={styles.avatar} />
+          ) : (
+            // Group without custom avatar - show member avatars in a grid
+            <View style={styles.groupAvatarGrid}>
+              {item.members && item.members.length > 0 ? (
+                item.members
+                  .slice(0, 4)
+                  .map((member, index) => (
+                    <Image
+                      key={member.userId || index}
+                      source={member.avatarUrl ? { uri: member.avatarUrl } : require("../assets/icon.png")}
+                      style={[
+                        styles.groupMemberAvatar,
+                        index === 0 && styles.topLeftAvatar,
+                        index === 1 && styles.topRightAvatar,
+                        index === 2 && styles.bottomLeftAvatar,
+                        index === 3 && styles.bottomRightAvatar,
+                      ]}
+                    />
+                  ))
+              ) : (
+                // Fallback if no members are available
+                <View style={styles.groupAvatarPlaceholder}>
+                  <Ionicons name="people" size={24} color="#FFFFFF" />
+                </View>
+              )}
             </View>
-          </>
+          )
         ) : (
+          // Regular one-on-one conversation avatar
           <Image
             source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
             style={styles.avatar}
           />
+        )}
+
+        {item.isGroup && item.members && item.members.length > 0 && (
+          <View style={styles.memberCountBadge}>
+            <Text style={styles.memberCountText}>{item.members.length}</Text>
+          </View>
         )}
       </View>
 
@@ -212,7 +285,7 @@ const MessagesScreen = ({ navigation }) => {
         <View style={styles.conversationHeader}>
           <View style={styles.nameContainer}>
             <Text style={styles.conversationName} numberOfLines={1}>
-              {item.participant?.fullName || "Unknown"}
+              {item.isGroup ? item.groupName || "Nhóm chat" : item.participant?.fullName || "Unknown"}
             </Text>
             {item.isOfficial && (
               <View style={styles.officialBadge}>
@@ -262,14 +335,53 @@ const MessagesScreen = ({ navigation }) => {
           <Ionicons name="search" size={20} color="#888" />
           <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" editable={false} />
 
-          <TouchableOpacity style={styles.headerButton}>
+          {/* <TouchableOpacity style={styles.headerButton}>
             <Ionicons name="qr-code" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
+          </TouchableOpacity> */}
+          <TouchableOpacity style={styles.headerButton} onPress={toggleDropdownMenu}>
             <Feather name="plus" size={24} color="#FFF" />
           </TouchableOpacity>
         </TouchableOpacity>
       </View>
+
+      {showDropdownMenu && (
+        <View style={styles.dropdownMenuContainer}>
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity
+              style={styles.dropdownMenuItem}
+              onPress={() => {
+                setShowDropdownMenu(false)
+                navigation.navigate("SearchScreen")
+              }}
+            >
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="person-add-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Thêm bạn</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dropdownMenuItem}
+              onPress={() => {
+                setShowDropdownMenu(false)
+                navigation.navigate("CreateGroupScreen")
+              }}
+            >
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="people-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Tạo nhóm</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.dropdownMenuItem}>
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="cloud-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Cloud của tôi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -324,6 +436,7 @@ const MessagesScreen = ({ navigation }) => {
   )
 }
 
+// Add these new styles for group avatars
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -428,24 +541,68 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginRight: 12,
+    width: 50,
+    height: 50,
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
   },
-  memberCountBadge: {
+  groupAvatarGrid: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#333",
+    position: "relative",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  groupMemberAvatar: {
+    width: 25,
+    height: 25,
     position: "absolute",
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  topLeftAvatar: {
+    top: 0,
+    left: 0,
+  },
+  topRightAvatar: {
+    top: 0,
+    right: 0,
+  },
+  bottomLeftAvatar: {
+    bottom: 0,
+    left: 0,
+  },
+  bottomRightAvatar: {
     bottom: 0,
     right: 0,
+  },
+  groupAvatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#0068FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberCountBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
     backgroundColor: "#333",
     borderRadius: 10,
-    width: 20,
+    minWidth: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#1A1A1A",
+    paddingHorizontal: 4,
   },
   memberCountText: {
     color: "#FFF",
@@ -515,6 +672,43 @@ const styles = StyleSheet.create({
     color: "#0068FF",
     fontSize: 12,
     marginTop: 2,
+  },
+  dropdownMenuContainer: {
+    position: "absolute",
+    top: 56, // Adjust based on your header height
+    right: 10,
+    zIndex: 1000,
+    width: 250,
+    backgroundColor: "transparent",
+  },
+  dropdownMenu: {
+    backgroundColor: "#262626",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    paddingVertical: 8,
+  },
+  dropdownMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownMenuIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  dropdownMenuText: {
+    color: "#FFFFFF",
+    fontSize: 16,
   },
 })
 

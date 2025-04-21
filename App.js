@@ -21,6 +21,7 @@ import { NavigationContainer } from "@react-navigation/native"
 import { createStackNavigator } from "@react-navigation/stack"
 import { AuthProvider } from "./context/AuthContext"
 import FriendRequestsScreen from "./Screens/FriendRequestsScreen"
+import CreateGroupScreen from "./Screens/CreateGroupScreen.js"
 
 const Stack = createStackNavigator()
 
@@ -49,6 +50,7 @@ export default function App() {
           <Stack.Screen name="UploadAvt" component={UpdateAvatar} options={{ headerShown: false }} />
           <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FriendRequestsScreen" component={FriendRequestsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CreateGroupScreen" component={CreateGroupScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
