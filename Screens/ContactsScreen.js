@@ -17,35 +17,11 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
+import { groupService } from "../services/groupService"
 
 // Xóa CONTACTS_DATA mẫu và thay thế bằng state
 
-const GROUPS_DATA = [
-  {
-    id: "1",
-    name: "Nhóm 12 _ CNM",
-    lastMessage: "Bạn: Phần backend ai th���c hiện z á @All",
-    time: "30 phút",
-    memberCount: 5,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-  {
-    id: "2",
-    name: "Nhóm 8 TTĐT_TH(1-3)",
-    lastMessage: "[Hình ảnh]",
-    time: "1 giờ",
-    memberCount: 5,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-  {
-    id: "3",
-    name: "NOW_TH_T3_10_12_KTTKPM",
-    lastMessage: "Hôm nay (17/03) là sinh nhật của Nhựt Anh Nguyễn,...",
-    time: "13 giờ",
-    memberCount: 30,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-]
+
 
 const ContactsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("friends")
@@ -57,6 +33,31 @@ const ContactsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
+  const [groupsData, setGroupsData] = useState([]) // State lưu trữ nhóm
+// Lấy danh sách nhóm khi component được render
+useEffect(() => {
+  fetchGroupsData()
+}, [])
+
+// Hàm lấy dữ liệu nhóm từ API
+const fetchGroupsData = async () => {
+  try {
+    setLoading(true)
+    setError(null)
+    
+    // Gọi API lấy danh sách nhóm
+    const groupsList = await groupService.getGroups()
+    
+    // Cập nhật state với dữ liệu nhóm
+    setGroupsData(groupsList)
+  } catch (error) {
+    console.error("Error fetching groups data:", error)
+    setError("Không thể tải danh sách nhóm. Vui lòng thử lại sau.")
+  } finally {
+    setLoading(false)
+    setRefreshing(false)
+  }
+}
 
   // Thêm useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
   useEffect(() => {
@@ -197,9 +198,12 @@ const ContactsScreen = ({ navigation }) => {
   const renderGroupItem = ({ item }) => (
     <TouchableOpacity style={styles.groupItem}>
       <View style={styles.groupAvatarContainer}>
-        {item.avatars.slice(0, 2).map((avatar, index) => (
+        {/* {item.avatars.slice(0, 2).map((avatar, index) => (
           <Image key={index} source={avatar} style={[styles.groupAvatar, index === 1 && styles.groupAvatarOverlap]} />
-        ))}
+        ))} */}
+        {Array.isArray(item.avatars) && item.avatars.slice(0, 2).map((avatar, index) => (
+        <Image key={index} source={avatar} style={[styles.groupAvatar, index === 1 && styles.groupAvatarOverlap]} />
+      ))}
         <View style={styles.memberCountBadge}>
           <Text style={styles.memberCountText}>{item.memberCount}</Text>
         </View>
@@ -347,18 +351,40 @@ const ContactsScreen = ({ navigation }) => {
           </>
         ) : (
           <>
-            {renderCreateGroupButton()}
+            {/* Render the header and create group button */}
             {renderGroupsHeader()}
-
-            <FlatList
-              data={GROUPS_DATA}
-              renderItem={renderGroupItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              style={styles.groupsList}
-            />
+            {renderCreateGroupButton()}
+        
+            {/* Show groups or a loading state */}
+            {loading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0068FF" />
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchGroupsData}>
+                  <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
+              </View>
+            ) : groupsData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Bạn chưa tham gia nhóm nào</Text>
+                <TouchableOpacity style={styles.addGroupButton} onPress={() => navigation.navigate("CreateGroupScreen")}>
+                  <Text style={styles.addGroupButtonText}>Tạo nhóm mới</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={groupsData}
+                renderItem={renderGroupItem}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
+              />
+            )}
           </>
-        )}
+        ) }
       </View>
 
       {/* Bottom Navigation */}
