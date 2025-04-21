@@ -18,18 +18,21 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
+import { groupService } from "../services/groupService"
 
 const { width } = Dimensions.get("window")
 
 const CreateGroupScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("contacts") // 'recent' or 'contacts'
   const [groupName, setGroupName] = useState("")
+  const [groupDescription, setGroupDescription] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [friends, setFriends] = useState([])
   const [sections, setSections] = useState([])
   // Update the state to track selected friends
   const [selectedFriends, setSelectedFriends] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false)
   const [error, setError] = useState(null)
   const searchInputRef = useRef(null)
 
@@ -93,6 +96,54 @@ const CreateGroupScreen = ({ navigation }) => {
     }
   }
 
+  const handleCreateGroup = async () => {
+    // Validate inputs
+    if (!groupName.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập tên nhóm")
+      return
+    }
+
+    if (selectedFriends.length === 0) {
+      Alert.alert("Lỗi", "Vui lòng chọn ít nhất một thành viên")
+      return
+    }
+
+    try {
+      setIsCreatingGroup(true)
+
+      // Extract user IDs from selected friends
+      const memberIds = selectedFriends.map((friend) => friend.userId)
+
+      // Create group data object
+      const groupData = {
+        name: groupName.trim(),
+        description: groupDescription.trim() || "Nhóm chat mới",
+        memberIds: memberIds,
+      }
+
+      // Call API to create group
+      const createdGroup = await groupService.createGroup(groupData)
+
+      // Show success message
+      Alert.alert("Thành công", `Đã tạo nhóm "${groupName}" với ${selectedFriends.length} thành viên`, [
+        {
+          text: "OK",
+          onPress: () => {
+            // Navigate back to chat list or to the new group chat
+            navigation.goBack()
+            // Optionally navigate to the new group chat
+            // navigation.navigate('ChatDetail', { conversationId: createdGroup.conversationId })
+          },
+        },
+      ])
+    } catch (error) {
+      console.error("Error creating group:", error)
+      Alert.alert("Lỗi", "Không thể tạo nhóm. Vui lòng thử lại sau.", [{ text: "OK" }])
+    } finally {
+      setIsCreatingGroup(false)
+    }
+  }
+
   const renderSectionHeader = ({ section }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionHeaderText}>{section.title}</Text>
@@ -130,14 +181,12 @@ const CreateGroupScreen = ({ navigation }) => {
             </View>
           ))}
         </ScrollView>
-        <TouchableOpacity
-          style={styles.createGroupActionButton}
-          onPress={() => {
-            // Handle group creation
-            Alert.alert("Tạo nhóm", `Đã tạo nhóm với ${selectedFriends.length} thành viên`)
-          }}
-        >
-          <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+        <TouchableOpacity style={styles.createGroupActionButton} onPress={handleCreateGroup} disabled={isCreatingGroup}>
+          {isCreatingGroup ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+          )}
         </TouchableOpacity>
       </View>
     )
@@ -169,6 +218,19 @@ const CreateGroupScreen = ({ navigation }) => {
           placeholderTextColor="#888888"
           value={groupName}
           onChangeText={setGroupName}
+        />
+      </View>
+
+      {/* Group Description Input (New) */}
+      <View style={styles.groupDescriptionContainer}>
+        <TextInput
+          style={styles.groupDescriptionInput}
+          placeholder="Mô tả nhóm (tùy chọn)"
+          placeholderTextColor="#888888"
+          value={groupDescription}
+          onChangeText={setGroupDescription}
+          multiline={true}
+          numberOfLines={2}
         />
       </View>
 
@@ -281,8 +343,20 @@ const styles = StyleSheet.create({
   },
   groupNameInput: {
     flex: 1,
-    color: "#888888",
+    color: "#FFFFFF",
     fontSize: 16,
+  },
+  // New styles for group description
+  groupDescriptionContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333333",
+  },
+  groupDescriptionInput: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    textAlignVertical: "top",
   },
   searchContainer: {
     flexDirection: "row",
