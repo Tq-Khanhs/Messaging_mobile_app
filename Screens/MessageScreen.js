@@ -16,21 +16,27 @@ import {
 import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons"
 import { messageService } from "../services/messageService"
 import { authService } from "../services/authService"
+import { groupService } from "../services/groupService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const MessagesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("priority")
   const [conversations, setConversations] = useState([])
+  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
+  const [showDropdownMenu, setShowDropdownMenu] = useState(false)
+
+  const toggleDropdownMenu = () => {
+    setShowDropdownMenu(!showDropdownMenu)
+  }
 
   useEffect(() => {
-    const loadUserAndConversations = async () => {
+    const loadUserAndData = async () => {
       try {
         setLoading(true)
 
-        // Check if user is authenticated
         const token = await AsyncStorage.getItem("authToken")
         if (!token) {
           console.log("No auth token found, redirecting to login")
@@ -48,7 +54,7 @@ const MessagesScreen = ({ navigation }) => {
 
         if (user) {
           console.log("User loaded successfully:", user.userId)
-          await fetchConversations()
+          await Promise.all([fetchConversations(), fetchGroups()])
         } else {
           console.log("User data not found, redirecting to login")
           await AsyncStorage.removeItem("authToken")
@@ -58,9 +64,7 @@ const MessagesScreen = ({ navigation }) => {
           })
         }
       } catch (err) {
-        console.error("Error loading user and conversations:", err)
-
-        // Check if error is due to authentication
+        console.error("Error loading user and data:", err)
         if (err.response && err.response.status === 401) {
           console.log("Authentication error, redirecting to login")
           await AsyncStorage.removeItem("authToken")
@@ -69,45 +73,43 @@ const MessagesScreen = ({ navigation }) => {
             routes: [{ name: "Login" }],
           })
         } else {
-          setError("Failed to load conversations")
+          setError("Failed to load data")
         }
       } finally {
         setLoading(false)
       }
     }
 
-    loadUserAndConversations()
+    loadUserAndData()
 
-    // Set up a refresh interval to check for new messages
-    const intervalId = setInterval(fetchConversations, 10000) // every 10 seconds
+    const intervalId = setInterval(() => {
+      fetchConversations()
+      fetchGroups()
+    }, 10000)
 
     return () => clearInterval(intervalId)
   }, [])
 
-  // Update the fetchConversations function to properly get conversations from the API
-  const fetchConversations = async () => {
+  const fetchGroups = async () => {
     try {
-      // Check if token exists before making the request
       const token = await AsyncStorage.getItem("authToken")
       if (!token) {
-        console.log("No auth token found when fetching conversations")
-        setError("Authentication required")
+        console.log("No auth token found when fetching groups")
+        setError("Yêu cầu xác thực")
         return
       }
 
-      console.log("Fetching conversations...")
-      const data = await messageService.getConversations()
-      console.log(`Received ${data.length} conversations`)
-      setConversations(data)
+      console.log("Fetching groups...")
+      const groupData = await groupService.getGroups()
+      console.log("Group data received:", groupData)
+
+      const groupsArray = Array.isArray(groupData.groups) ? groupData.groups : []
+      setGroups(groupsArray)
       setError(null)
     } catch (err) {
-      console.error("Error fetching conversations:", err)
-
-      // Check if error is due to authentication
+      console.error("Error fetching groups:", err)
       if (err.response && err.response.status === 401) {
-        setError("Session expired. Please login again.")
-
-        // Optional: Auto redirect to login after a delay
+        setError("Phiên hết hạn. Vui lòng đăng nhập lại.")
         setTimeout(() => {
           navigation.reset({
             index: 0,
@@ -115,22 +117,74 @@ const MessagesScreen = ({ navigation }) => {
           })
         }, 2000)
       } else {
-        setError("Failed to load conversations")
+        setError("Không thể tải danh sách nhóm")
       }
     }
   }
 
-  // Update the handleConversationPress function to properly navigate to the chat detail screen
+  const fetchConversations = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken")
+      if (!token) {
+        console.log("No auth token found when fetching conversations")
+        setError("Yêu cầu xác thực")
+        return
+      }
+
+      console.log("Fetching conversations...")
+      const data = await messageService.getConversations()
+      console.log("Conversations data received:", data)
+
+      const conversationsArray = Array.isArray(data) ? data : []
+      const processedConversations = await Promise.all(
+        conversationsArray.map(async (conversation) => {
+          if (conversation.isGroup) {
+            try {
+              const groupDetails = await messageService.getGroupByConversationId(conversation.conversationId)
+              return {
+                ...conversation,
+                groupName: groupDetails?.name || "Nhóm chat",
+                groupDescription: groupDetails?.description || "",
+                groupAvatarUrl: groupDetails?.avatarUrl,
+                members: groupDetails?.members || [],
+              }
+            } catch (err) {
+              console.error("Error fetching group details:", err)
+              return {
+                ...conversation,
+                groupName: conversation.groupName || "Nhóm chat",
+                members: conversation.members || [],
+              }
+            }
+          }
+          return conversation
+        }),
+      )
+
+      setConversations(processedConversations)
+      setError(null)
+    } catch (err) {
+      console.error("Error fetching conversations:", err)
+      if (err.response && err.response.status === 401) {
+        setError("Phiên hết hạn. Vui lòng đăng nhập lại.")
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+        }, 2000)
+      } else {
+        setError("Không thể tải danh sách cuộc trò chuyện")
+      }
+    }
+  }
+
   const handleConversationPress = async (conversation) => {
-    // Mark conversation as read when opening it
     if (conversation.unreadCount > 0) {
       try {
-        // Mark all unread messages as read
         if (conversation.lastMessage) {
           await messageService.markMessageAsRead(conversation.lastMessage.messageId)
         }
-
-        // Update the local state to reflect the read status
         setConversations((prevConversations) =>
           prevConversations.map((conv) =>
             conv.conversationId === conversation.conversationId ? { ...conv, unreadCount: 0 } : conv,
@@ -143,17 +197,43 @@ const MessagesScreen = ({ navigation }) => {
 
     console.log("Navigating to conversation:", {
       conversationId: conversation.conversationId,
-      name: conversation.participant?.fullName || "Unknown",
+      name: conversation.isGroup
+        ? conversation.groupName || "Nhóm chat"
+        : conversation.participant?.fullName || "Unknown",
+      isGroup: conversation.isGroup,
     })
 
-    // Navigate to chat detail screen with the correct conversation ID
     navigation.navigate("ChatDetail", {
       conversation: {
         id: conversation.conversationId,
-        name: conversation.participant?.fullName || "Unknown",
-        avatar: conversation.participant?.avatarUrl,
+        name: conversation.isGroup
+          ? conversation.groupName || "Nhóm chat"
+          : conversation.participant?.fullName || "Unknown",
+        avatar: conversation.isGroup ? conversation.groupAvatarUrl : conversation.participant?.avatarUrl,
         online: false,
         isGroup: conversation.isGroup || false,
+        members: conversation.members || [],
+        description: conversation.isGroup ? conversation.groupDescription : "",
+      },
+    })
+  }
+
+  const handleGroupPress = (group) => {
+    console.log("Navigating to group conversation:", {
+      conversationId: group.conversationId,
+      name: group.name || "Nhóm chat",
+      isGroup: true,
+    })
+
+    navigation.navigate("ChatDetail", {
+      conversation: {
+        id: group.conversationId,
+        name: group.name || "Nhóm chat",
+        avatar: group.avatarUrl,
+        online: false,
+        isGroup: true,
+        members: group.members || [],
+        description: group.description || "",
       },
     })
   }
@@ -167,72 +247,110 @@ const MessagesScreen = ({ navigation }) => {
       case "file":
         return "[File]"
       case "emoji":
-        return message.content // Show the emoji directly
+        return message.content
       case "text":
       default:
-        // If sender is current user, prepend "Bạn: "
         const prefix = message.senderId === currentUser?.userId ? "Bạn: " : ""
-
-        // If message is recalled or deleted
         if (message.isRecalled) return "Tin nhắn đã bị thu hồi"
         if (message.isDeleted) return "Tin nhắn đã bị xóa"
-
-        // Truncate long messages
         let content = message.content
         if (content && content.length > 30) {
           content = content.substring(0, 27) + "..."
         }
-
         return prefix + content
     }
   }
 
-  const renderConversationItem = ({ item }) => (
-    <TouchableOpacity style={styles.conversationItem} onPress={() => handleConversationPress(item)}>
-      <View style={styles.avatarContainer}>
-        {item.isGroup ? (
-          <>
+  const renderConversationItem = ({ item }) => {
+    const isGroupItem = item.hasOwnProperty("groupId")
+    return (
+      <TouchableOpacity
+        style={styles.conversationItem}
+        onPress={() => (isGroupItem ? handleGroupPress(item) : handleConversationPress(item))}
+      >
+        <View style={styles.avatarContainer}>
+          {isGroupItem || item.isGroup ? (
+            item.avatarUrl || item.groupAvatarUrl ? (
+              <Image
+                source={{ uri: item.avatarUrl || item.groupAvatarUrl }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.groupAvatarGrid}>
+                {item.members && item.members.length > 0 ? (
+                  item.members
+                    .slice(0, 4)
+                    .map((member, index) => (
+                      <Image
+                        key={member.userId || index}
+                        source={member.avatarUrl ? { uri: member.avatarUrl } : require("../assets/icon.png")}
+                        style={[
+                          styles.groupMemberAvatar,
+                          index === 0 && styles.topLeftAvatar,
+                          index === 1 && styles.topRightAvatar,
+                          index === 2 && styles.bottomLeftAvatar,
+                          index === 3 && styles.bottomRightAvatar,
+                        ]}
+                      />
+                    ))
+                ) : (
+                  <View style={styles.groupAvatarPlaceholder}>
+                    <Ionicons name="people" size={24} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+            )
+          ) : (
             <Image
               source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
               style={styles.avatar}
             />
-            <View style={styles.memberCountBadge}>
-              <Text style={styles.memberCountText}>{item.memberCount || 2}</Text>
-            </View>
-          </>
-        ) : (
-          <Image
-            source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
-            style={styles.avatar}
-          />
-        )}
-      </View>
+          )}
 
-      <View style={styles.conversationContent}>
-        <View style={styles.conversationHeader}>
-          <View style={styles.nameContainer}>
-            <Text style={styles.conversationName} numberOfLines={1}>
-              {item.participant?.fullName || "Unknown"}
+          {(isGroupItem || item.isGroup) && item.members && item.members.length > 0 && (
+            <View style={styles.memberCountBadge}>
+              <Text style={styles.memberCountText}>{item.members.length}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <View style={styles.nameContainer}>
+              <Text style={styles.conversationName} numberOfLines={1}>
+                {isGroupItem ? item.name || "Nhóm chat" : item.isGroup ? item.groupName || "Nhóm chat" : item.participant?.fullName || "Unknown"}
+              </Text>
+              {item.isOfficial && (
+                <View style={styles.officialBadge}>
+                  <MaterialIcons name="verified" size={14} color="#FFD700" />
+                </View>
+              )}
+            </View>
+            <Text style={styles.timeText}>
+              {new Date(isGroupItem ? item.updatedAt : item.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </Text>
-            {item.isOfficial && (
-              <View style={styles.officialBadge}>
-                <MaterialIcons name="verified" size={14} color="#FFD700" />
-              </View>
-            )}
           </View>
-          <Text style={styles.timeText}>
-            {new Date(item.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </Text>
+          <View style={styles.messageContainer}>
+            <Text style={styles.lastMessageText} numberOfLines={1}>
+              {isGroupItem ? (item.description || "Nhóm chat") : formatLastMessagePreview(item.lastMessage)}
+            </Text>
+            {!isGroupItem && item.unreadCount > 0 && <View style={styles.notificationDot} />}
+          </View>
         </View>
-        <View style={styles.messageContainer}>
-          <Text style={styles.lastMessageText} numberOfLines={1}>
-            {formatLastMessagePreview(item.lastMessage)}
-          </Text>
-          {item.unreadCount > 0 && <View style={styles.notificationDot} />}
-        </View>
-      </View>
-    </TouchableOpacity>
-  )
+      </TouchableOpacity>
+    )
+  }
+
+  const getDisplayData = () => {
+    const safeGroups = Array.isArray(groups) ? groups : []
+    const safeConversations = Array.isArray(conversations) ? conversations : []
+    if (activeTab === "priority") {
+      // Filter out group conversations from conversations to avoid duplicates
+      const nonGroupConversations = safeConversations.filter(conv => !conv.isGroup)
+      return [...safeGroups, ...nonGroupConversations]
+    }
+    return safeConversations
+  }
 
   if (loading) {
     return (
@@ -246,7 +364,7 @@ const MessagesScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={[styles.container, styles.centerContent]}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchConversations}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => Promise.all([fetchConversations(), fetchGroups()])}>
           <Text style={styles.retryButtonText}>Thử lại</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -261,15 +379,50 @@ const MessagesScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.searchContainer} onPress={() => navigation.navigate("SearchScreen")}>
           <Ionicons name="search" size={20} color="#888" />
           <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" editable={false} />
-
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="qr-code" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity style={styles.headerButton} onPress={toggleDropdownMenu}>
             <Feather name="plus" size={24} color="#FFF" />
           </TouchableOpacity>
         </TouchableOpacity>
       </View>
+
+      {showDropdownMenu && (
+        <View style={styles.dropdownMenuContainer}>
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity
+              style={styles.dropdownMenuItem}
+              onPress={() => {
+                setShowDropdownMenu(false)
+                navigation.navigate("SearchScreen")
+              }}
+            >
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="person-add-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Thêm bạn</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dropdownMenuItem}
+              onPress={() => {
+                setShowDropdownMenu(false)
+                navigation.navigate("CreateGroupScreen")
+              }}
+            >
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="people-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Tạo nhóm</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.dropdownMenuItem}>
+              <View style={styles.dropdownMenuIconContainer}>
+                <Ionicons name="cloud-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.dropdownMenuText}>Cloud của tôi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -290,18 +443,18 @@ const MessagesScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {conversations.length === 0 ? (
+      {getDisplayData().length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Không có cuộc trò chuyện nào</Text>
+          <Text style={styles.emptyText}>Không có cuộc trò chuyện hoặc nhóm nào</Text>
         </View>
       ) : (
         <FlatList
-          data={conversations}
+          data={getDisplayData()}
           renderItem={renderConversationItem}
-          keyExtractor={(item) => item.conversationId.toString()}
+          keyExtractor={(item) => (item.conversationId || item.groupId).toString()}
           showsVerticalScrollIndicator={false}
           refreshing={loading}
-          onRefresh={fetchConversations}
+          onRefresh={() => Promise.all([fetchConversations(), fetchGroups()])}
         />
       )}
 
@@ -428,24 +581,68 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginRight: 12,
+    width: 50,
+    height: 50,
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
   },
-  memberCountBadge: {
+  groupAvatarGrid: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#333",
+    position: "relative",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  groupMemberAvatar: {
+    width: 25,
+    height: 25,
     position: "absolute",
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  topLeftAvatar: {
+    top: 0,
+    left: 0,
+  },
+  topRightAvatar: {
+    top: 0,
+    right: 0,
+  },
+  bottomLeftAvatar: {
+    bottom: 0,
+    left: 0,
+  },
+  bottomRightAvatar: {
     bottom: 0,
     right: 0,
+  },
+  groupAvatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#0068FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberCountBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
     backgroundColor: "#333",
     borderRadius: 10,
-    width: 20,
+    minWidth: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#1A1A1A",
+    paddingHorizontal: 4,
   },
   memberCountText: {
     color: "#FFF",
@@ -515,6 +712,43 @@ const styles = StyleSheet.create({
     color: "#0068FF",
     fontSize: 12,
     marginTop: 2,
+  },
+  dropdownMenuContainer: {
+    position: "absolute",
+    top: 56,
+    right: 10,
+    zIndex: 1000,
+    width: 250,
+    backgroundColor: "transparent",
+  },
+  dropdownMenu: {
+    backgroundColor: "#262626",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    paddingVertical: 8,
+  },
+  dropdownMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownMenuIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  dropdownMenuText: {
+    color: "#FFFFFF",
+    fontSize: 16,
   },
 })
 

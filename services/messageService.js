@@ -19,7 +19,21 @@ export const messageService = {
         },
       })
 
-      return response.data.conversations
+      // Process conversations to ensure group information is available
+      const conversations = response.data.conversations.map((conversation) => {
+        if (conversation.isGroup) {
+          // Ensure group conversations have required fields
+          return {
+            ...conversation,
+            groupName: conversation.groupName || "Nhóm chat",
+            members: conversation.members || [],
+            // If no avatarUrl is provided, we'll handle that in the UI
+          }
+        }
+        return conversation
+      })
+
+      return conversations
     } catch (error) {
       console.error("Get conversations error:", error)
       throw error
@@ -237,6 +251,28 @@ export const messageService = {
       return response.data.unreadCount
     } catch (error) {
       console.error("Get unread count error:", error)
+      throw error
+    }
+  },
+
+  // Get group information
+  getGroupInfo: async (groupId) => {
+    try {
+      const response = await api.get(`/groups/${groupId}`)
+      return response.data.group
+    } catch (error) {
+      console.error("Get group info error:", error)
+      throw error
+    }
+  },
+
+  // Add this new function to get group information by conversationId
+  getGroupByConversationId: async (conversationId) => {
+    try {
+      const response = await api.get(`/groups/conversation/${conversationId}`)
+      return response.data.group
+    } catch (error) {
+      console.error("Get group by conversation ID error:", error)
       throw error
     }
   },
