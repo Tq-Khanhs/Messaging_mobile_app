@@ -17,66 +17,32 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
-
-// Xóa CONTACTS_DATA mẫu và thay thế bằng state
-
-const GROUPS_DATA = [
-  {
-    id: "1",
-    name: "Nhóm 12 _ CNM",
-    lastMessage: "Bạn: Phần backend ai th���c hiện z á @All",
-    time: "30 phút",
-    memberCount: 5,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-  {
-    id: "2",
-    name: "Nhóm 8 TTĐT_TH(1-3)",
-    lastMessage: "[Hình ảnh]",
-    time: "1 giờ",
-    memberCount: 5,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-  {
-    id: "3",
-    name: "NOW_TH_T3_10_12_KTTKPM",
-    lastMessage: "Hôm nay (17/03) là sinh nhật của Nhựt Anh Nguyễn,...",
-    time: "13 giờ",
-    memberCount: 30,
-    avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
-  },
-]
+import { groupService } from "../services/groupService"
 
 const ContactsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("friends")
   const [activeFilter, setActiveFilter] = useState("all")
   const [friendRequestCount, setFriendRequestCount] = useState(0)
-
-  // Thêm state cho danh sách bạn bè
   const [friendsData, setFriendsData] = useState([])
+  const [groupsData, setGroupsData] = useState([]) // State for groups
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
-  // Thêm useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
   useEffect(() => {
     fetchFriendData()
+    fetchGroupData()
   }, [])
 
-  // Hàm để lấy dữ liệu bạn bè và lời mời kết bạn
   const fetchFriendData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Lấy danh sách bạn bè
       const friendsList = await friendService.getFriends()
-
-      // Xử lý dữ liệu để phân loại theo chữ cái đầu tiên
       const processedData = processFriendsData(friendsList)
       setFriendsData(processedData)
 
-      // Lấy số lượng lời mời kết bạn
       const receivedRequests = await friendService.getReceivedFriendRequests()
       if (receivedRequests && Array.isArray(receivedRequests)) {
         setFriendRequestCount(receivedRequests.length)
@@ -90,21 +56,51 @@ const ContactsScreen = ({ navigation }) => {
     }
   }
 
-  // Hàm xử lý dữ liệu bạn bè thành dạng section
+  const fetchGroupData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const groupData = await groupService.getGroups()
+      const groupsArray = Array.isArray(groupData.groups) ? groupData.groups : []
+      const processedGroups = groupsArray.map(group => ({
+        id: group.groupId,
+        name: group.name || "Nhóm chat",
+        lastMessage: group.description || "[Không có mô tả]", // Placeholder, update if API provides last message
+        time: formatTime(group.updatedAt), // Format timestamp
+        memberCount: Array.isArray(group.members) ? group.members.length : 0,
+        avatars: group.members
+          ? group.members
+              .slice(0, 2)
+              .map(member =>
+                member.avatarUrl ? { uri: member.avatarUrl } : require("../assets/icon.png")
+              )
+          : [require("../assets/icon.png"), require("../assets/icon.png")],
+      }))
+      setGroupsData(processedGroups)
+    } catch (error) {
+      console.error("Error fetching group data:", error)
+      setError("Không thể tải danh sách nhóm. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    Promise.all([fetchFriendData(), fetchGroupData()])
+  }
+
   const processFriendsData = (friends) => {
     if (!friends || !Array.isArray(friends)) return []
 
-    // Tạo map để lưu trữ bạn bè theo chữ cái đầu tiên
     const sections = {}
-
-    // Phân loại bạn bè theo chữ cái đầu tiên
     friends.forEach((friend) => {
       const firstLetter = friend.fullName.charAt(0).toUpperCase()
       if (!sections[firstLetter]) {
         sections[firstLetter] = []
       }
-
-      // Thêm bạn bè vào section tương ứng
       sections[firstLetter].push({
         id: friend.userId,
         name: friend.fullName,
@@ -112,24 +108,27 @@ const ContactsScreen = ({ navigation }) => {
       })
     })
 
-    // Chuyển đổi map thành mảng sections cho SectionList
-    const sectionArray = Object.keys(sections)
+    return Object.keys(sections)
       .sort()
       .map((letter) => ({
         title: letter,
         data: sections[letter],
       }))
-
-    return sectionArray
   }
 
-  // Hàm refresh khi kéo xuống
-  const onRefresh = () => {
-    setRefreshing(true)
-    fetchFriendData()
+  // Helper function to format timestamp
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "Vừa xong"
+    const now = new Date()
+    const date = new Date(timestamp)
+    const diffMs = now - date
+    const diffMins = Math.round(diffMs / 60000)
+    if (diffMins < 60) return `${diffMins} phút`
+    const diffHours = Math.round(diffMins / 60)
+    if (diffHours < 24) return `${diffHours} giờ`
+    return date.toLocaleDateString("vi-VN")
   }
 
-  // Cập nhật SPECIAL_SECTIONS để hiển thị số lượng lời mời kết bạn
   const SPECIAL_SECTIONS = [
     {
       id: "friend_requests",
@@ -156,7 +155,7 @@ const ContactsScreen = ({ navigation }) => {
         if (item.id === "friend_requests") {
           navigation.navigate("FriendRequestsScreen")
         } else if (item.id === "phone_contacts") {
-          // Xử lý khi nhấn vào danh bạ máy
+          // Handle phone contacts navigation
         }
       }}
     >
@@ -195,10 +194,29 @@ const ContactsScreen = ({ navigation }) => {
   )
 
   const renderGroupItem = ({ item }) => (
-    <TouchableOpacity style={styles.groupItem}>
+    <TouchableOpacity
+      style={styles.groupItem}
+      onPress={() => {
+        navigation.navigate("ChatDetail", {
+          conversation: {
+            id: item.conversationId,
+            name: item.name || "Nhóm chat",
+            avatar: item.avatarUrl,
+            online: false,
+            isGroup: true,
+            members: item.members || [],
+            description: item.description || "",
+          },
+        })
+      }}
+    >
       <View style={styles.groupAvatarContainer}>
         {item.avatars.slice(0, 2).map((avatar, index) => (
-          <Image key={index} source={avatar} style={[styles.groupAvatar, index === 1 && styles.groupAvatarOverlap]} />
+          <Image
+            key={index}
+            source={avatar}
+            style={[styles.groupAvatar, index === 1 && styles.groupAvatarOverlap]}
+          />
         ))}
         <View style={styles.memberCountBadge}>
           <Text style={styles.memberCountText}>{item.memberCount}</Text>
@@ -213,14 +231,6 @@ const ContactsScreen = ({ navigation }) => {
           <Text style={styles.timeText}>{item.time}</Text>
         </View>
         <View style={styles.messageContainer}>
-          {item.hasBirthday && (
-            <View style={styles.birthdayContainer}>
-              <Ionicons name="gift" size={16} color="#FF3B30" style={styles.birthdayIcon} />
-              <Text style={styles.birthdayText} numberOfLines={1}>
-                {item.birthdayMessage}
-              </Text>
-            </View>
-          )}
           <Text style={styles.lastMessageText} numberOfLines={1}>
             {item.lastMessage}
           </Text>
@@ -230,7 +240,10 @@ const ContactsScreen = ({ navigation }) => {
   )
 
   const renderCreateGroupButton = () => (
-    <TouchableOpacity style={styles.createGroupButton}>
+    <TouchableOpacity
+      style={styles.createGroupButton}
+      onPress={() => navigation.navigate("CreateGroupScreen")}
+    >
       <View style={styles.createGroupIcon}>
         <Ionicons name="people" size={24} color="#0068FF" />
         <View style={styles.plusIconContainer}>
@@ -243,7 +256,7 @@ const ContactsScreen = ({ navigation }) => {
 
   const renderGroupsHeader = () => (
     <View style={styles.groupsHeaderContainer}>
-      <Text style={styles.groupsHeaderText}>Nhóm đang tham gia (61)</Text>
+      <Text style={styles.groupsHeaderText}>Nhóm đang tham gia ({groupsData.length})</Text>
       <TouchableOpacity style={styles.sortButton}>
         <Ionicons name="swap-vertical" size={20} color="#888" />
         <Text style={styles.sortButtonText}>Sắp xếp</Text>
@@ -255,7 +268,6 @@ const ContactsScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={["right", "left"]}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
 
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#888" />
@@ -266,7 +278,6 @@ const ContactsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "friends" && styles.activeTab]}
@@ -282,7 +293,6 @@ const ContactsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Content Container */}
       <View style={styles.contentContainer}>
         {activeTab === "friends" ? (
           <>
@@ -350,18 +360,41 @@ const ContactsScreen = ({ navigation }) => {
             {renderCreateGroupButton()}
             {renderGroupsHeader()}
 
-            <FlatList
-              data={GROUPS_DATA}
-              renderItem={renderGroupItem}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              style={styles.groupsList}
-            />
+            {loading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0068FF" />
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchGroupData}>
+                  <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
+              </View>
+            ) : groupsData.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Bạn chưa tham gia nhóm nào</Text>
+                <TouchableOpacity
+                  style={styles.addFriendButton}
+                  onPress={() => navigation.navigate("CreateGroupScreen")}
+                >
+                  <Text style={styles.addFriendButtonText}>Tạo nhóm mới</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={groupsData}
+                renderItem={renderGroupItem}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                style={styles.groupsList}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0068FF"]} />}
+              />
+            )}
           </>
         )}
       </View>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MessagesScreen")}>
           <Ionicons name="chatbubble-outline" size={24} color="#888" />
@@ -373,7 +406,7 @@ const ContactsScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="time-outline" size={24} color="#888" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen")}>
           <Ionicons name="person-outline" size={24} color="#888" />
         </TouchableOpacity>
       </View>
@@ -542,7 +575,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Groups tab styles
   groupsList: {
     flex: 1,
   },
@@ -677,18 +709,6 @@ const styles = StyleSheet.create({
     color: "#888",
     fontSize: 14,
   },
-  birthdayContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  birthdayIcon: {
-    marginRight: 4,
-  },
-  birthdayText: {
-    color: "#FF3B30",
-    fontSize: 14,
-  },
   bottomNav: {
     flexDirection: "row",
     borderTopWidth: 0.5,
@@ -709,7 +729,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  // Thêm styles mới
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
