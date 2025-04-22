@@ -871,7 +871,35 @@ const ForwardScreen = ({ visible, onClose, contacts, onSelectContact, messageToF
 
 // Update the ChatDetailScreen to handle group conversations
 const ChatDetailScreen = ({ route, navigation }) => {
-  const { conversation } = route.params 
+  const { conversation } = route.params
+
+  // Add this code at the beginning of the ChatDetailScreen component, right after the route and navigation declarations:
+
+  // Listen for updates to the conversation object from child screens
+  useEffect(() => {
+    if (route.params?.updatedConversation) {
+      // Update the conversation with the new data
+      setConversation(route.params.updatedConversation)
+
+      // Clear the route params to avoid duplicate updates
+      navigation.setParams({ updatedConversation: undefined })
+    }
+  }, [route.params?.updatedConversation])
+
+  // Add this function to the ChatDetailScreen component:
+  const setConversation = (updatedConversation) => {
+    // Update the conversation object with the new data
+    if (updatedConversation) {
+      conversation = updatedConversation
+
+      // If the screen needs to refresh any UI based on the conversation data
+      // For example, update the header with new member count
+      if (updatedConversation.isGroup && updatedConversation.members) {
+        // Update any UI elements that depend on the conversation data
+        // This might include the header title, member count, etc.
+      }
+    }
+  }
 
   // Add this function to render the group avatar in the header
   const renderHeaderAvatar = () => {
@@ -943,9 +971,12 @@ const ChatDetailScreen = ({ route, navigation }) => {
   // Add a new state to cache user details
   const [userCache, setUserCache] = useState({})
 
+  // Add this near the top of the ChatDetailScreen component, after the state declarations:
+  const userCacheRef = useRef({})
+
   // Yêu cầu quyền truy cập vào thư viện ảnh và tệp tin
   useEffect(() => {
-    ; (async () => {
+    ;(async () => {
       // Yêu cầu quyền truy cập vào thư viện ảnh
       const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (mediaLibraryStatus !== "granted") {
@@ -1009,7 +1040,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       if (conversation && conversation.id) {
         fetchMessages()
       }
-    }, 5000) // every 5 seconds
+    }, 15000) // every 15 seconds instead of 5
 
     return () => {
       keyboardDidShowListener.remove()
@@ -1036,18 +1067,24 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  // Add a function to fetch user details by userId
   const fetchUserDetails = async (userId) => {
-    // If we already have this user in cache, return it
-    if (userCache[userId]) {
-      return userCache[userId]
+    // If we already have this user in cache, return it immediately
+    if (userCacheRef.current[userId]) {
+      return userCacheRef.current[userId]
     }
 
     try {
+      // Check if this user is already in the state cache
+      if (userCache[userId]) {
+        return userCache[userId]
+      }
+
       // Fetch user details from API
       const user = await userService.getUserById(userId)
+      console.log(user)
 
-      // Update cache with the new user
+      // Update both caches
+      userCacheRef.current[userId] = user
       setUserCache((prevCache) => ({
         ...prevCache,
         [userId]: user,
@@ -1784,7 +1821,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         }
         getSender()
       }
-    }, [senderId, isGroup])
+    }, [senderId, isGroup]) // This dependency array is already correct, but let's check the fetchUserDetails function
 
     if (!isGroup) {
       // For one-on-one conversations, just show the conversation avatar
@@ -1865,9 +1902,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
       if (messageToForward) {
         // Get or create a conversation with this contact
-        const conversation = await messageService.getOrStartConversation(contact.id)
-
-        // Forward the message to this conversation
+        const conversation = await messageService.getOrStartConversation(contact.id) // Forward the message to this conversation
         await messageService.forwardMessage(messageToForward.messageId, conversation.conversationId)
 
         Alert.alert("Đã chuyển tiếp", `Tin nhắn đã được chuyển tiếp đến ${contact.name}`)
@@ -1949,7 +1984,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="videocam-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}
+          <TouchableOpacity
+            style={styles.iconButton}
             onPress={() => {
               if (conversation.isGroup) {
                 navigation.navigate("GroupInfoScreen", {
@@ -2503,65 +2539,6 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: "rgba(0, 104, 255, 0.5)",
   },
-  messageActionContainer: {
-    backgroundColor: "#262626",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingVertical: 16,
-    paddingBottom: 30,
-  },
-  actionButtonsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 16,
-  },
-  actionButton: {
-    width: "25%",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  actionIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#333333",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-    position: "relative",
-  },
-  actionText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    textAlign: "center",
-  },
-  betaTag: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#4CD964",
-    color: "#000000",
-    fontSize: 8,
-    fontWeight: "bold",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    right: -5,
-    backgroundColor: "#4CD964",
-    color: "#000000",
-    fontSize: 8,
-    fontWeight: "bold",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  sendButtonDisabled: {
-    backgroundColor: "rgba(0, 104, 255, 0.5)",
-  },
   myMessageTime: {
     textAlign: "right",
   },
@@ -2902,6 +2879,78 @@ const styles = StyleSheet.create({
     color: "#AAA",
     fontSize: 12,
     marginTop: 2,
+  },
+  messageActionContainer: {
+    backgroundColor: "#262626",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingVertical: 16,
+    paddingBottom: 30,
+  },
+  actionButtonsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 16,
+  },
+  actionButton: {
+    width: "25%",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  actionIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#333333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+    position: "relative",
+  },
+  actionText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  betaTag: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#4CD964",
+    color: "#000000",
+    fontSize: 8,
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    right: -5,
+    backgroundColor: "#4CD964",
+    color: "#000000",
+    fontSize: 8,
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  actionSheet: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+  },
+  actionText: {
+    fontSize: 18,
+    marginLeft: 15,
+    color: "#007AFF",
   },
 })
 

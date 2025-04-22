@@ -58,7 +58,7 @@ const ContactsScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
-  // Thêm useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
+  // Th��m useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
   useEffect(() => {
     fetchFriendData()
   }, [])

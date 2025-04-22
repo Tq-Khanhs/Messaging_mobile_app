@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   Image,
   TextInput,
   StatusBar,
@@ -28,11 +29,19 @@ const AddGroupMembersScreen = () => {
   const [selectedFriends, setSelectedFriends] = useState([])
   const [sections, setSections] = useState([])
   const [groupId, setGroupId] = useState(null)
+  const [conversationData, setConversationData] = useState(null)
 
   const route = useRoute()
   const navigation = useNavigation()
   const { conversation } = route.params || {}
   const { user } = useAuth()
+
+  // Initialize conversation data
+  useEffect(() => {
+    if (conversation) {
+      setConversationData(conversation)
+    }
+  }, [conversation])
 
   // Fetch group details and friends
   useEffect(() => {
@@ -41,18 +50,18 @@ const AddGroupMembersScreen = () => {
         setLoading(true)
 
         // Get group ID from conversation
-        if (conversation && conversation.id) {
-          const groupDetails = await groupService.getGroupByConversationId(conversation.id)
+        if (conversationData && conversationData.id) {
+          const groupDetails = await groupService.getGroupByConversationId(conversationData.id)
           setGroupId(groupDetails.group.groupId)
         }
 
         // Get friends list
         const friendsData = await friendService.getFriends()
-        
+
         // Filter out friends who are already in the group
-        const existingMemberIds = conversation?.members?.map(member => member.userId) || []
-        const availableFriends = friendsData.filter(friend => !existingMemberIds.includes(friend.userId))
-        
+        const existingMemberIds = conversationData?.members?.map((member) => member.userId) || []
+        const availableFriends = friendsData.filter((friend) => !existingMemberIds.includes(friend.userId))
+
         setFriends(availableFriends)
         organizeIntoSections(availableFriends)
       } catch (err) {
@@ -63,8 +72,10 @@ const AddGroupMembersScreen = () => {
       }
     }
 
-    fetchData()
-  }, [conversation])
+    if (conversationData) {
+      fetchData()
+    }
+  }, [conversationData])
 
   // Organize friends into alphabetical sections
   const organizeIntoSections = (friendsList) => {
@@ -81,9 +92,9 @@ const AddGroupMembersScreen = () => {
     // Convert to array of sections
     const sectionsArray = Object.keys(groupedFriends)
       .sort()
-      .map(letter => ({
+      .map((letter) => ({
         title: letter,
-        data: groupedFriends[letter].sort((a, b) => a.fullName.localeCompare(b.fullName))
+        data: groupedFriends[letter].sort((a, b) => a.fullName.localeCompare(b.fullName)),
       }))
 
     setSections(sectionsArray)
@@ -97,9 +108,10 @@ const AddGroupMembersScreen = () => {
       setFilteredFriends(friends)
       organizeIntoSections(friends)
     } else {
-      const filtered = friends.filter(friend => 
-        friend.fullName.toLowerCase().includes(text.toLowerCase()) ||
-        (friend.username && friend.username.toLowerCase().includes(text.toLowerCase()))
+      const filtered = friends.filter(
+        (friend) =>
+          friend.fullName.toLowerCase().includes(text.toLowerCase()) ||
+          (friend.username && friend.username.toLowerCase().includes(text.toLowerCase())),
       )
       setFilteredFriends(filtered)
       organizeIntoSections(filtered)
@@ -108,11 +120,11 @@ const AddGroupMembersScreen = () => {
 
   // Toggle friend selection
   const toggleFriendSelection = (friend) => {
-    setSelectedFriends(prevSelected => {
-      const isAlreadySelected = prevSelected.some(f => f.userId === friend.userId)
-      
+    setSelectedFriends((prevSelected) => {
+      const isAlreadySelected = prevSelected.some((f) => f.userId === friend.userId)
+
       if (isAlreadySelected) {
-        return prevSelected.filter(f => f.userId !== friend.userId)
+        return prevSelected.filter((f) => f.userId !== friend.userId)
       } else {
         return [...prevSelected, friend]
       }
@@ -122,22 +134,56 @@ const AddGroupMembersScreen = () => {
   // Add selected friends to group
   const addMembersToGroup = async () => {
     if (selectedFriends.length === 0) return
-    
+
     try {
       setLoading(true)
-      
+
       if (!groupId) {
         throw new Error("Group ID not found")
       }
-      
-      const memberIds = selectedFriends.map(friend => friend.userId)
-      await groupService.addGroupMembers(groupId, memberIds)
-      
-      Alert.alert(
-        "Thành công",
-        "Đã thêm thành viên vào nhóm",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      )
+
+      // Array to track successfully added members
+      const addedMembers = []
+
+      // Extract member IDs one by one instead of sending an array directly
+      for (const friend of selectedFriends) {
+        try {
+          // Add members one at a time to avoid array format issues
+          await groupService.addGroupMembers(groupId, friend.userId)
+
+          // Add to successfully added members
+          addedMembers.push({
+            userId: friend.userId,
+            fullName: friend.fullName,
+            avatarUrl: friend.avatarUrl,
+            role: "member",
+            addedBy: user?.fullName || "Unknown",
+          })
+        } catch (err) {
+          console.error(`Error adding member ${friend.fullName}:`, err)
+          // Continue with other members even if one fails
+        }
+      }
+
+      // If we successfully added members, update the conversation data
+      if (addedMembers.length > 0) {
+        // Create updated members list by combining existing members with new ones
+        const updatedMembers = [...(conversationData?.members || []), ...addedMembers]
+
+        // Pass the updated members back to the GroupMembersScreen
+        navigation.navigate("AddGroupMembers", {
+          updatedMembers: updatedMembers,
+          updatedConversation: {
+            ...conversationData,
+            members: updatedMembers,
+          },
+        })
+
+        Alert.alert("Thành công", "Đã thêm thành viên vào nhóm")
+      } else {
+        Alert.alert("Thông báo", "Không có thành viên nào được thêm vào nhóm")
+        navigation.goBack()
+      }
     } catch (err) {
       console.error("Error adding members:", err)
       Alert.alert("Lỗi", "Không thể thêm thành viên. Vui lòng thử lại sau.")
@@ -148,36 +194,29 @@ const AddGroupMembersScreen = () => {
 
   // Remove a selected friend
   const removeSelectedFriend = (friendId) => {
-    setSelectedFriends(prevSelected => prevSelected.filter(f => f.userId !== friendId))
+    setSelectedFriends((prevSelected) => prevSelected.filter((f) => f.userId !== friendId))
   }
 
   // Render friend item
   const renderFriendItem = ({ item }) => {
-    const isSelected = selectedFriends.some(friend => friend.userId === item.userId)
-    
+    const isSelected = selectedFriends.some((friend) => friend.userId === item.userId)
+
     return (
-      <TouchableOpacity 
-        style={styles.friendItem}
-        onPress={() => toggleFriendSelection(item)}
-      >
+      <TouchableOpacity style={styles.friendItem} onPress={() => toggleFriendSelection(item)}>
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, { backgroundColor: "#0068FF" }]}>
-            <Text style={styles.avatarInitial}>
-              {item.fullName ? item.fullName.charAt(0).toUpperCase() : "U"}
-            </Text>
+            <Text style={styles.avatarInitial}>{item.fullName ? item.fullName.charAt(0).toUpperCase() : "U"}</Text>
           </View>
         )}
-        
+
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{item.fullName}</Text>
-          {item.username && (
-            <Text style={styles.friendUsername}>@{item.username}</Text>
-          )}
+          {item.username && <Text style={styles.friendUsername}>@{item.username}</Text>}
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}
           onPress={() => toggleFriendSelection(item)}
         >
@@ -216,23 +255,23 @@ const AddGroupMembersScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Thêm vào nhóm</Text>
           <Text style={styles.selectedCount}>
             {selectedFriends.length > 0 ? `Đã chọn: ${selectedFriends.length}` : ""}
           </Text>
         </View>
-        
+
         <View style={styles.headerRight} />
       </View>
-      
+
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#888888" style={styles.searchIcon} />
@@ -249,7 +288,7 @@ const AddGroupMembersScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-      
+
       {/* Friends List */}
       <SectionList
         sections={sections}
@@ -264,8 +303,28 @@ const AddGroupMembersScreen = () => {
             </Text>
           </View>
         }
+        refreshing={loading}
+        onRefresh={() => {
+          if (conversationData) {
+            const fetchData = async () => {
+              try {
+                setLoading(true)
+                const friendsData = await friendService.getFriends()
+                const existingMemberIds = conversationData?.members?.map((member) => member.userId) || []
+                const availableFriends = friendsData.filter((friend) => !existingMemberIds.includes(friend.userId))
+                setFriends(availableFriends)
+                organizeIntoSections(availableFriends)
+              } catch (err) {
+                console.error("Error refreshing friends list:", err)
+              } finally {
+                setLoading(false)
+              }
+            }
+            fetchData()
+          }
+        }}
       />
-      
+
       {/* Selected Friends Bar */}
       {selectedFriends.length > 0 && (
         <View style={styles.selectedBar}>
@@ -281,7 +340,7 @@ const AddGroupMembersScreen = () => {
                     </Text>
                   </View>
                 )}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.removeSelectedButton}
                   onPress={() => removeSelectedFriend(friend.userId)}
                 >
@@ -290,8 +349,8 @@ const AddGroupMembersScreen = () => {
               </View>
             ))}
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.sendButton}
             onPress={addMembersToGroup}
             disabled={selectedFriends.length === 0 || loading}
@@ -304,7 +363,7 @@ const AddGroupMembersScreen = () => {
           </TouchableOpacity>
         </View>
       )}
-      
+
       {/* Info Text */}
       <View style={styles.infoContainer}>
         <Text style={styles.infoText}>Thành viên mới xem được tin gửi gần đây</Text>

@@ -91,6 +91,29 @@ const MessagesScreen = ({ navigation }) => {
     return () => clearInterval(intervalId)
   }, [])
 
+  // Add a new useEffect to listen for navigation focus events and check for refresh parameter
+  useEffect(() => {
+    // Add a listener for when the screen comes into focus
+    const unsubscribe = navigation.addListener("focus", () => {
+      // Check if we need to refresh conversations (coming from group creation)
+      const params = navigation.getState().routes.find((r) => r.name === "MessageScreen")?.params
+      if (params?.refreshConversations) {
+        console.log("Refreshing conversations after group creation")
+        fetchConversations()
+
+        // If we have a new group ID, we could potentially scroll to it or highlight it
+        if (params.newGroupId) {
+          console.log("New group created with ID:", params.newGroupId)
+          // Reset the parameter to avoid refreshing again on next focus
+          navigation.setParams({ refreshConversations: undefined, newGroupId: undefined })
+        }
+      }
+    })
+
+    // Clean up the listener when component unmounts
+    return unsubscribe
+  }, [navigation])
+
   // Update the fetchConversations function to fetch group details for group conversations
   const fetchConversations = async () => {
     try {

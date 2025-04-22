@@ -114,14 +114,28 @@ export const userService = {
   },
   getUserById: async (userId) => {
     try {
-      
-      const response = await api.get(`/users/${userId}`);
+      console.log(`Fetching user details for ID: ${userId}`)
+      const response = await api.get(`/users/${userId}`)
 
-      
-      return response.data.user;
+      // Log the full response to debug
+      console.log("User API response:", response.data)
+
+      // Check if the response has the expected structure
+      if (response.data && response.data.user) {
+        return response.data.user
+      } else if (response.data) {
+        // If the user data is directly in the response data (not nested under 'user')
+        return response.data
+      } else {
+        console.error("Unexpected response structure:", response)
+        return null
+      }
     } catch (error) {
-      console.error(`Error fetching user ${userId}:`, error);
-      throw error;
+      console.error(`Error fetching user ${userId}:`, error)
+      if (error.response) {
+        console.error("Error response:", error.response.status, error.response.data)
+      }
+      return null
     }
-  },
+  }
 }

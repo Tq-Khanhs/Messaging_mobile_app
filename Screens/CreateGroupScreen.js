@@ -96,6 +96,7 @@ const CreateGroupScreen = ({ navigation }) => {
     }
   }
 
+  // Update the handleCreateGroup function to navigate back with a refresh parameter
   const handleCreateGroup = async () => {
     // Validate inputs
     if (!groupName.trim()) {
@@ -129,10 +130,11 @@ const CreateGroupScreen = ({ navigation }) => {
         {
           text: "OK",
           onPress: () => {
-            // Navigate back to chat list or to the new group chat
-            navigation.goBack()
-            // Optionally navigate to the new group chat
-            // navigation.navigate('ChatDetail', { conversationId: createdGroup.conversationId })
+            // Navigate back to message screen with refresh parameter
+            navigation.navigate("MessagesScreen", {
+              refreshConversations: true,
+              newGroupId: createdGroup.conversationId,
+            })
           },
         },
       ])

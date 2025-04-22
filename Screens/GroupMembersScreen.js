@@ -15,12 +15,12 @@ import {
   Alert,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { useRoute } from "@react-navigation/native"
+import { useRoute, useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 // Add the import for groupService at the top of the file
 import { groupService } from "../services/groupService"
 
-const GroupMembersScreen = ({ navigation }) => {
+const GroupMembersScreen = () => {
   const [activeTab, setActiveTab] = useState("all")
   const [members, setMembers] = useState([])
   const [filteredMembers, setFilteredMembers] = useState([])
@@ -31,20 +31,29 @@ const GroupMembersScreen = ({ navigation }) => {
   const [pendingMembers, setPendingMembers] = useState([])
   // Add a new state variable for groupId
   const [groupId, setGroupId] = useState(null)
+  const [conversationData, setConversationData] = useState(null)
 
   const route = useRoute()
+  const navigation = useNavigation()
   const { conversation } = route.params || {}
   const { user } = useAuth()
 
+  // Initialize conversation data
   useEffect(() => {
-    // Use the members data directly from the conversation object
-    if (conversation && conversation.members) {
-      setMembers(conversation.members)
-      setFilteredMembers(conversation.members)
+    if (conversation) {
+      setConversationData(conversation)
+    }
+  }, [conversation])
+
+  // Update members when conversation data changes
+  useEffect(() => {
+    if (conversationData && conversationData.members) {
+      setMembers(conversationData.members)
+      setFilteredMembers(conversationData.members)
 
       // Determine user role
       if (user) {
-        const currentUserMember = conversation.members.find((member) => member.userId === user.userId)
+        const currentUserMember = conversationData.members.find((member) => member.userId === user.userId)
         if (currentUserMember) {
           setUserRole(currentUserMember.role || "member")
         }
@@ -66,15 +75,15 @@ const GroupMembersScreen = ({ navigation }) => {
         },
       ])
     }
-  }, [conversation, user])
+  }, [conversationData, user])
 
   // Add a new useEffect to fetch the group details when the component mounts
   useEffect(() => {
     const fetchGroupDetails = async () => {
-      if (conversation && conversation.id) {
+      if (conversationData && conversationData.id) {
         try {
           setLoading(true)
-          const groupDetails = await groupService.getGroupByConversationId(conversation.id)
+          const groupDetails = await groupService.getGroupByConversationId(conversationData.id)
           setGroupId(groupDetails.group.groupId)
         } catch (err) {
           console.error("Error fetching group details:", err)
@@ -86,7 +95,89 @@ const GroupMembersScreen = ({ navigation }) => {
     }
 
     fetchGroupDetails()
-  }, [conversation])
+  }, [conversationData])
+
+  // Update the useEffect hook that listens for navigation focus events
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      console.log("GroupMembersScreen focused, checking for updates")
+      console.log("Route params:", route.params)
+
+      // Check if we have updated members from the route params
+      if (route.params?.updatedMembers) {
+        console.log("Found updated members, updating state")
+        // Update the conversation data with the new members
+        setConversationData((prevData) => ({
+          ...prevData,
+          members: route.params.updatedMembers,
+        }))
+
+        // Update the members list directly
+        setMembers(route.params.updatedMembers)
+        setFilteredMembers(route.params.updatedMembers)
+
+        // Clear the route params to avoid duplicate updates
+        navigation.setParams({ updatedMembers: undefined })
+      }
+
+      // Check if we have an updated conversation
+      if (route.params?.updatedConversation) {
+        console.log("Found updated conversation, updating state")
+        setConversationData(route.params.updatedConversation)
+
+        // Update the members list directly
+        if (route.params.updatedConversation.members) {
+          setMembers(route.params.updatedConversation.members)
+          setFilteredMembers(route.params.updatedConversation.members)
+        }
+
+        // Clear the route params to avoid duplicate updates
+        navigation.setParams({ updatedConversation: undefined })
+      }
+
+      // Refresh the members list when the screen is focused
+      if (conversationData && conversationData.id) {
+        fetchGroupMembers()
+      }
+    })
+
+    return unsubscribe
+  }, [navigation, route.params, conversationData])
+
+  // Add a new function to fetch group members
+  const fetchGroupMembers = async () => {
+    if (!conversationData || !conversationData.id) return
+
+    try {
+      setLoading(true)
+      // In a real app, you would fetch the updated members list from the API
+      const groupDetails = await groupService.getGroupByConversationId(conversationData.id)
+
+      // Update the conversation data with the new members
+      if (groupDetails && groupDetails.group && groupDetails.group.members) {
+        const updatedMembers = groupDetails.group.members
+
+        // Update local state
+        setConversationData((prevData) => ({
+          ...prevData,
+          members: updatedMembers,
+        }))
+
+        // Update the parent screen (ChatDetailScreen) when navigating back
+        navigation.setParams({
+          updatedConversation: {
+            ...conversationData,
+            members: updatedMembers,
+          },
+        })
+      }
+    } catch (err) {
+      console.error("Error fetching group members:", err)
+      setError("Không thể tải danh sách thành viên. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearch = (text) => {
     setSearchQuery(text)
@@ -122,8 +213,11 @@ const GroupMembersScreen = ({ navigation }) => {
   }
 
   const handleAddMember = () => {
-    // Navigate to add member screen
-    Alert.alert("Thêm thành viên", "Chức năng đang được phát triển")
+    // Navigate to add member screen with current conversation data
+    navigation.navigate("AddGroupMembers", {
+      conversation: conversationData,
+      currentMembers: members,
+    })
   }
 
   // Update the handleMemberOptions function to use the state variable groupId instead of conversation.id
@@ -198,10 +292,24 @@ const GroupMembersScreen = ({ navigation }) => {
       await groupService.changeGroupMemberRole(groupId, member.userId, newRole)
 
       // Update local state
-      setMembers((prevMembers) => prevMembers.map((m) => (m.userId === member.userId ? { ...m, role: newRole } : m)))
-      setFilteredMembers((prevMembers) =>
-        prevMembers.map((m) => (m.userId === member.userId ? { ...m, role: newRole } : m)),
-      )
+      const updatedMembers = members.map((m) => (m.userId === member.userId ? { ...m, role: newRole } : m))
+
+      setMembers(updatedMembers)
+      setFilteredMembers(filteredMembers.map((m) => (m.userId === member.userId ? { ...m, role: newRole } : m)))
+
+      // Update conversation data
+      setConversationData((prevData) => ({
+        ...prevData,
+        members: updatedMembers,
+      }))
+
+      // Update the parent screen (ChatDetailScreen) when navigating back
+      navigation.setParams({
+        updatedConversation: {
+          ...conversationData,
+          members: updatedMembers,
+        },
+      })
 
       // Show success message
       const actionText = newRole === "moderator" ? "đặt làm phó nhóm" : "xóa vai trò phó nhóm"
@@ -233,9 +341,24 @@ const GroupMembersScreen = ({ navigation }) => {
               // Call the API to remove the member
               await groupService.removeGroupMember(groupId, member.userId)
 
-              // Update local state
-              setMembers((prevMembers) => prevMembers.filter((m) => m.userId !== member.userId))
-              setFilteredMembers((prevMembers) => prevMembers.filter((m) => m.userId !== member.userId))
+              // Update local state by removing the member
+              const updatedMembers = members.filter((m) => m.userId !== member.userId)
+              setMembers(updatedMembers)
+              setFilteredMembers(filteredMembers.filter((m) => m.userId !== member.userId))
+
+              // Update conversation data
+              setConversationData((prevData) => ({
+                ...prevData,
+                members: updatedMembers,
+              }))
+
+              // Update the parent screen (ChatDetailScreen) when navigating back
+              navigation.setParams({
+                updatedConversation: {
+                  ...conversationData,
+                  members: updatedMembers,
+                },
+              })
 
               Alert.alert("Thành công", `Đã xóa ${member.fullName} khỏi nhóm`)
             } catch (err) {
@@ -291,7 +414,7 @@ const GroupMembersScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {pendingMembers.length > 0 && (
+        {/* {pendingMembers.length > 0 && (
           <TouchableOpacity style={styles.pendingMembersSection}>
             <View style={styles.pendingIconContainer}>
               <Ionicons name="people" size={24} color="#FFFFFF" />
@@ -301,7 +424,7 @@ const GroupMembersScreen = ({ navigation }) => {
               <Text style={styles.pendingCountText}>{pendingMembers.length}</Text>
             </View>
           </TouchableOpacity>
-        )}
+        )} */}
 
         <View style={styles.memberCountContainer}>
           <Text style={styles.memberCountText}>Thành viên ({filteredMembers.length})</Text>
@@ -369,6 +492,8 @@ const GroupMembersScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           )}
+          refreshing={loading}
+          onRefresh={fetchGroupMembers}
         />
       </>
     )
@@ -435,12 +560,14 @@ const GroupMembersScreen = ({ navigation }) => {
               )}
             </View>
           )}
+          refreshing={loading}
+          onRefresh={fetchGroupMembers}
         />
       </>
     )
   }
 
-  if (loading) {
+  if (loading && !members.length) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#0068FF" />
