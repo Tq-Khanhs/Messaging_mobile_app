@@ -32,9 +32,9 @@ import ForwardScreen from "./ForwardScreen"
 import { useSocket } from "../context/SocketContext"
 import { authService } from "../services/authService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-
+import { LogBox } from 'react-native';
 const { width, height } = Dimensions.get("window")
-
+LogBox.ignoreLogs(['Cannot read property', 'SocketService']);
 // Common emojis array
 const EMOJIS = [
   "😀",
@@ -469,7 +469,9 @@ const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDe
 const ChatDetailScreen = ({ route, navigation }) => {
 
   const { conversation } = route.params
-  const conversationId = conversation?._id;
+  // Ensure we get the correct conversation ID
+  const conversationId = conversation?.id || conversation?._id;
+
   useEffect(() => {
     if (route.params?.updatedConversation) {
       setConversation(route.params.updatedConversation)
@@ -486,23 +488,23 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }
 
   useEffect(() => {
-    if (!conversation || !conversation.id) {
-      console.log("[ChatDetail] No valid conversation, skipping socket setup")
+    if (!conversationId) {
+      console.log("[ChatDetail] No valid conversation ID, skipping socket setup")
       return
     }
 
-    console.log("[ChatDetail] Setting up socket for conversation:", conversation.id)
+    console.log("[ChatDetail] Setting up socket for conversation:", conversationId)
 
     // Join chat room
     const joinChatRoom = async () => {
       try {
-        console.log("[ChatDetail] Attempting to join chat room:", conversation.id)
-        const success = joinChat(conversation.id)
+        console.log("[ChatDetail] Attempting to join chat room:", conversationId)
+        const success = joinChat(conversationId)
         if (!success) {
           console.error("[ChatDetail] Failed to join chat room")
           return
         }
-        console.log("[ChatDetail] Successfully joined chat room:", conversation.id)
+        console.log("[ChatDetail] Successfully joined chat room:", conversationId)
       } catch (err) {
         console.error("[ChatDetail] Error joining chat room:", err)
       }
@@ -512,56 +514,113 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
     // Set up message handlers
     const newMessageHandler = (data) => {
-      console.log("[ChatDetail] New message received:", data)
-      if (data.message.conversationId === conversation.id) {
-        setMessages((prevMessages) => {
-          // Check if message already exists
-          const exists = prevMessages.some(msg => msg.messageId === data.message.messageId)
-          if (exists) {
-            console.log("[ChatDetail] Message already exists, skipping")
-            return prevMessages
-          }
-          console.log("[ChatDetail] Adding new message to state")
-          return [data.message, ...prevMessages]
-        })
+      try {
+        // Debug log
+        console.log("[ChatDetail] Socket new_message event received");
+        
+        // If data is falsy, just fetch messages
+        if (!data) {
+          console.log("[ChatDetail] No data received, fetching all messages");
+          fetchMessages();
+          return;
+        }
+
+        // Debug log the data structure
+        console.log("[ChatDetail] Data structure:", {
+          hasData: !!data,
+          hasMessage: !!data?.message,
+          dataType: typeof data,
+          messageType: typeof data?.message
+        });
+
+        // Get the conversation ID from various possible locations
+        const msgConversationId = 
+          data?.conversationId || 
+          data?.message?.conversationId || 
+          conversation?.id || 
+          conversation?._id;
+
+        console.log("[ChatDetail] Conversation IDs:", {
+          fromData: data?.conversationId,
+          fromMessage: data?.message?.conversationId,
+          currentConvId: conversation?.id,
+          currentConvMongoId: conversation?._id,
+          extracted: msgConversationId
+        });
+
+        // Always fetch messages to ensure we're up to date
+        console.log("[ChatDetail] Fetching messages");
+        fetchMessages();
+
+      } catch (error) {
+        // Detailed error logging
+        console.log("[ChatDetail] Error in newMessageHandler:", {
+          error: error.message,
+          stack: error.stack,
+          data: JSON.stringify(data, null, 2)
+        });
       }
-    }
+    };
 
     const messageDeletedHandler = (data) => {
-      console.log("[ChatDetail] Message deleted event:", data)
-      if (data.conversationId === conversation.id) {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.messageId === data.messageId ? { ...msg, isDeleted: true, content: "Tin nhắn đã bị xóa" } : msg,
-          ),
-        )
+      try {
+        if (!data) return;
+        
+        console.log("[ChatDetail] Message deleted event:", data);
+        if (data.conversationId === conversationId) {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.messageId === data.messageId ? { ...msg, isDeleted: true, content: "Tin nhắn đã bị xóa" } : msg,
+            ),
+          );
+        }
+      } catch (error) {
+        console.log("[ChatDetail] Error handling deleted message:", error);
       }
-    }
+    };
 
     const messageRecalledHandler = (data) => {
-      console.log("[ChatDetail] Message recalled event:", data)
-      if (data.conversationId === conversation.id) {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.messageId === data.messageId ? { ...msg, isRecalled: true, content: "Tin nhắn đã bị thu hồi" } : msg,
-          ),
-        )
+      try {
+        if (!data) return;
+
+        console.log("[ChatDetail] Message recalled event:", data);
+        if (data.conversationId === conversationId) {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.messageId === data.messageId ? { ...msg, isRecalled: true, content: "Tin nhắn đã bị thu hồi" } : msg,
+            ),
+          );
+        }
+      } catch (error) {
+        console.log("[ChatDetail] Error handling recalled message:", error);
       }
-    }
+    };
 
     const typingStartHandler = (data) => {
-      console.log("[ChatDetail] Typing started:", data)
-      if (data.conversationId === conversation.id && data.userId !== currentUser?.userId) {
-        setTypingIndicator(true)
+      try {
+        if (!data) return;
+
+        console.log("[ChatDetail] Typing started:", data);
+        if (data.conversationId === conversationId && data.userId !== currentUser?.userId) {
+          setTypingIndicator(true);
+        }
+      } catch (error) {
+        console.log("[ChatDetail] Error handling typing start:", error);
       }
-    }
+    };
 
     const typingStopHandler = (data) => {
-      console.log("[ChatDetail] Typing stopped:", data)
-      if (data.conversationId === conversation.id && data.userId !== currentUser?.userId) {
-        setTypingIndicator(false)
+      try {
+        if (!data) return;
+
+        console.log("[ChatDetail] Typing stopped:", data);
+        if (data.conversationId === conversationId && data.userId !== currentUser?.userId) {
+          setTypingIndicator(false);
+        }
+      } catch (error) {
+        console.log("[ChatDetail] Error handling typing stop:", error);
       }
-    }
+    };
 
     // Register event listeners
     console.log("[ChatDetail] Registering event listeners")
@@ -574,14 +633,14 @@ const ChatDetailScreen = ({ route, navigation }) => {
     // Clean up on unmount
     return () => {
       console.log("[ChatDetail] Cleaning up chat room listeners")
-      leaveChat(conversation.id)
+      leaveChat(conversationId)
       unsubscribeNewMessage()
       unsubscribeMessageDeleted()
       unsubscribeMessageRecalled()
       unsubscribeTypingStart()
       unsubscribeTypingStop()
     }
-  }, [conversation, currentUser, addListener, joinChat, leaveChat])
+  }, [conversationId, currentUser, addListener, joinChat, leaveChat])
 
   // Handle sending messages
   const handleSend = async () => {
@@ -600,6 +659,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         content: inputText,
         timestamp: currentTime,
         senderId: currentUser?.userId,
+        conversationId: conversationId,
         type: "text",
         isDeleted: false,
         isRecalled: false,
@@ -614,7 +674,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
       console.log("[ChatDetail] Sending message to server")
       // Send message to server
-      const response = await messageService.sendTextMessage(conversation.id, inputText)
+      const response = await messageService.sendTextMessage(conversationId, inputText)
       console.log("[ChatDetail] Server response:", response)
 
       // Update message in UI with server response
@@ -716,16 +776,16 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [typingIndicator, setTypingIndicator] = useState(false)
   const typingTimeoutRef = useRef(null)
   useEffect(() => {
-    if (!conversation || !conversation.id) return
-    joinChat(conversation.id)
+    if (!conversationId) return
+    joinChat(conversationId)
     const newMessageHandler = (data) => {
-      if (data.message.conversationId === conversation.id) {
+      if (data.message.conversationId === conversationId) {
         console.log("New message in current chat:", data)
         fetchMessages()
       }
     }
     const messageDeletedHandler = (data) => {
-      if (data.conversationId === conversation.id) {
+      if (data.conversationId === conversationId) {
         console.log("Message deleted in current chat:", data)
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
@@ -736,7 +796,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
 
     const messageRecalledHandler = (data) => {
-      if (data.conversationId === conversation.id) {
+      if (data.conversationId === conversationId) {
         console.log("Message recalled in current chat:", data)
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
@@ -747,14 +807,14 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
 
     const typingStartHandler = (data) => {
-      if (data.chatId === conversation.id && data.userId !== currentUser?.userId) {
+      if (data.chatId === conversationId && data.userId !== currentUser?.userId) {
         console.log("User is typing:", data)
         setTypingIndicator(true)
       }
     }
 
     const typingStopHandler = (data) => {
-      if (data.chatId === conversation.id && data.userId !== currentUser?.userId) {
+      if (data.chatId === conversationId && data.userId !== currentUser?.userId) {
         console.log("User stopped typing:", data)
         setTypingIndicator(false)
       }
@@ -767,24 +827,24 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const unsubscribeTypingStop = addListener("typing:stop", typingStopHandler)
 
     return () => {
-      leaveChat(conversation.id)
+      leaveChat(conversationId)
       unsubscribeNewMessage()
       unsubscribeMessageDeleted()
       unsubscribeMessageRecalled()
       unsubscribeTypingStart()
       unsubscribeTypingStop()
     }
-  }, [conversation, currentUser, addListener])
+  }, [conversationId, currentUser, addListener])
   const fetchMessages = async () => {
     try {
-      if (!conversation || !conversation.id) {
-        console.error("No valid conversation ID provided:", conversation)
+      if (!conversationId) {
+        console.error("No valid conversation ID provided:", conversationId)
         setError("Invalid conversation data")
         return
       }
 
-      console.log(`Fetching messages for conversation: ${conversation.id}`)
-      const data = await messageService.getMessages(conversation.id)
+      console.log(`Fetching messages for conversation: ${conversationId}`)
+      const data = await messageService.getMessages(conversationId)
       console.log(`Received ${data?.length || 0} messages:`, JSON.stringify(data?.slice(0, 2), null, 2))
 
       if (!data || !Array.isArray(data)) {
@@ -860,6 +920,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
           content: emoji,
           timestamp: currentTime,
           senderId: currentUser?.userId,
+          conversationId: conversationId,
           type: "emoji",
           isDeleted: false,
           isRecalled: false,
@@ -868,8 +929,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
         setMessages([newMessage, ...messages])
         setReplyingToMessage(null)
-        console.log(`Sending emoji to conversation: ${conversation.id}`)
-        const response = await messageService.sendEmojiMessage(conversation.id, emoji)
+        console.log(`Sending emoji to conversation: ${conversationId}`)
+        const response = await messageService.sendEmojiMessage(conversationId, emoji)
         setMessages((prevMessages) =>
           prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
         )
@@ -1010,7 +1071,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
             const imageUris = result.assets.map((asset) => asset.uri)
 
             // Gọi API để gửi nhiều ảnh
-            const response = await messageService.sendImageMessage(conversation.id, imageUris)
+            const response = await messageService.sendImageMessage(conversationId, imageUris)
 
             // Cập nhật UI với tin nhắn mới
             setMessages([response, ...messages])
@@ -1028,7 +1089,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
           try {
             // Gọi API để gửi một ảnh
-            const response = await messageService.sendImageMessage(conversation.id, [imageUri])
+            const response = await messageService.sendImageMessage(conversationId, [imageUri])
 
             // Cập nhật UI với tin nhắn mới
             setMessages([response, ...messages])
@@ -1071,7 +1132,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         try {
           // Gọi API để gửi file
           const response = await messageService.sendFileMessage(
-            conversation.id,
+            conversationId,
             file.uri,
             file.name,
             file.mimeType,

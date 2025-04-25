@@ -32,7 +32,8 @@ const MessagesScreen = ({ navigation }) => {
   const messageHandler = (data) => {
     try {
       console.log('New message received:', data);
-      if (data && data.message) {
+      if (data && data.conversationId) {
+        console.log('Fetching conversations after new message');
         fetchConversations();
       } else {
         console.warn('Received invalid message data:', data);
@@ -58,10 +59,23 @@ const MessagesScreen = ({ navigation }) => {
   const messageDeletedHandler = (data) => {
     try {
       console.log('Message deleted event:', data);
-      if (data && (data.messageId || data.conversationId)) {
-        fetchConversations();
-      } else {
-        console.warn('Received invalid message deleted data:', data);
+      if (data && data.messageId) {
+        // Update the conversation list to show message as deleted
+        setConversations(prevConversations => 
+          prevConversations.map(conv => {
+            if (conv.lastMessage && conv.lastMessage.messageId === data.messageId) {
+              return {
+                ...conv,
+                lastMessage: {
+                  ...conv.lastMessage,
+                  isDeleted: true,
+                  content: "Tin nhắn đã bị xóa"
+                }
+              };
+            }
+            return conv;
+          })
+        );
       }
     } catch (error) {
       console.error('Error handling message delete:', error);
@@ -71,10 +85,23 @@ const MessagesScreen = ({ navigation }) => {
   const messageRecalledHandler = (data) => {
     try {
       console.log('Message recalled event:', data);
-      if (data && (data.messageId || data.conversationId)) {
-        fetchConversations();
-      } else {
-        console.warn('Received invalid message recall data:', data);
+      if (data && data.messageId) {
+        // Update the conversation list to show message as recalled
+        setConversations(prevConversations => 
+          prevConversations.map(conv => {
+            if (conv.lastMessage && conv.lastMessage.messageId === data.messageId) {
+              return {
+                ...conv,
+                lastMessage: {
+                  ...conv.lastMessage,
+                  isRecalled: true,
+                  content: "Tin nhắn đã bị thu hồi"
+                }
+              };
+            }
+            return conv;
+          })
+        );
       }
     } catch (error) {
       console.error('Error handling message recall:', error);
