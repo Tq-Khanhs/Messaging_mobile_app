@@ -19,6 +19,8 @@ import { useRoute, useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 // Add the import for groupService at the top of the file
 import { groupService } from "../services/groupService"
+// Add imports at the top
+import { useSocket } from "../context/SocketContext"
 
 const GroupMembersScreen = () => {
   const [activeTab, setActiveTab] = useState("all")
@@ -37,6 +39,9 @@ const GroupMembersScreen = () => {
   const navigation = useNavigation()
   const { conversation } = route.params || {}
   const { user } = useAuth()
+
+  // Inside the GroupMembersScreen component, add these hooks
+  const { addListener, removeListener } = useSocket()
 
   // Initialize conversation data
   useEffect(() => {
@@ -143,6 +148,58 @@ const GroupMembersScreen = () => {
 
     return unsubscribe
   }, [navigation, route.params, conversationData])
+
+  // Add this useEffect to handle socket events
+  useEffect(() => {
+    if (!groupId) return
+
+    // Listen for member added events
+    const memberAddedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Member added:", data)
+        // Refresh members list
+        fetchGroupMembers()
+      }
+    }
+
+    // Listen for member removed events
+    const memberRemovedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Member removed:", data)
+
+        // If current user was removed, navigate back to messages screen
+        if (data.userId === user?.userId) {
+          Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
+            { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+          ])
+        } else {
+          // Otherwise, refresh members list
+          fetchGroupMembers()
+        }
+      }
+    }
+
+    // Listen for member role update events
+    const memberRoleUpdatedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Member role updated:", data)
+        // Refresh members list
+        fetchGroupMembers()
+      }
+    }
+
+    // Register event listeners
+    const unsubscribeMemberAdded = addListener("member_added", memberAddedHandler)
+    const unsubscribeMemberRemoved = addListener("member_removed", memberRemovedHandler)
+    const unsubscribeMemberRoleUpdated = addListener("member_role_updated", memberRoleUpdatedHandler)
+
+    // Clean up listeners on unmount
+    return () => {
+      unsubscribeMemberAdded()
+      unsubscribeMemberRemoved()
+      unsubscribeMemberRoleUpdated()
+    }
+  }, [groupId, user, addListener, navigation])
 
   // Add a new function to fetch group members
   const fetchGroupMembers = async () => {

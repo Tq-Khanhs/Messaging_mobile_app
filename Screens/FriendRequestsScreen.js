@@ -18,6 +18,9 @@ import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
 import { messageService } from "../services/messageService"
 
+// Add imports at the top
+import { useSocket } from "../context/SocketContext"
+
 const FriendRequestsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("received")
   const [receivedRequests, setReceivedRequests] = useState([])
@@ -26,9 +29,48 @@ const FriendRequestsScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
+  // Inside the FriendRequestsScreen component, add these hooks
+  const { addListener, removeListener } = useSocket()
+
   useEffect(() => {
     fetchFriendRequests()
   }, [])
+
+  // Add this useEffect to handle socket events
+  useEffect(() => {
+    // Listen for friend request events
+    const friendRequestHandler = (data) => {
+      console.log("Friend request received:", data)
+      // Refresh the received requests list
+      fetchFriendRequests()
+    }
+
+    // Listen for friend request response events
+    const friendRequestResponseHandler = (data) => {
+      console.log("Friend request response:", data)
+      // Refresh the sent requests list if a request was responded to
+      fetchFriendRequests()
+    }
+
+    // Listen for friend request canceled events
+    const friendRequestCanceledHandler = (data) => {
+      console.log("Friend request canceled:", data)
+      // Refresh the received requests list
+      fetchFriendRequests()
+    }
+
+    // Register event listeners
+    const unsubscribeFriendRequest = addListener("friend_request", friendRequestHandler)
+    const unsubscribeFriendResponse = addListener("friend_request_response", friendRequestResponseHandler)
+    const unsubscribeFriendCanceled = addListener("friend_request_canceled", friendRequestCanceledHandler)
+
+    // Clean up listeners on unmount
+    return () => {
+      unsubscribeFriendRequest()
+      unsubscribeFriendResponse()
+      unsubscribeFriendCanceled()
+    }
+  }, [addListener])
 
   const fetchFriendRequests = async () => {
     try {
@@ -59,7 +101,7 @@ const FriendRequestsScreen = ({ navigation }) => {
   const handleAcceptRequest = async (request) => {
     try {
       setLoading(true)
-  
+
       await friendService.respondToFriendRequest(request.requestId, "accept")
 
       try {
@@ -361,7 +403,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    
   },
   emptyIcon: {
     width: 160,

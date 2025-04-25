@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   View,
   Text,
@@ -17,6 +15,8 @@ import { Ionicons, Feather, MaterialIcons } from "@expo/vector-icons"
 import { messageService } from "../services/messageService"
 import { authService } from "../services/authService"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import socketService from "../services/socketService"
+import { SOCKET_EVENTS } from "../config/constants"
 
 const MessagesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("priority")
@@ -24,173 +24,346 @@ const MessagesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
-  // Add this new state for the dropdown menu
   const [showDropdownMenu, setShowDropdownMenu] = useState(false)
+  const [socketConnected, setSocketConnected] = useState(false)
+  const flatListRef = useRef(null)
 
-  // Add this function to toggle the dropdown menu
+  // Define event handlers at component level so they're accessible in both setup and cleanup
+  const messageHandler = (data) => {
+    try {
+      console.log('New message received:', data);
+      if (data && data.message) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid message data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling new message:', error);
+    }
+  };
+
+  const messageReadHandler = (data) => {
+    try {
+      console.log('Message read event:', data);
+      if (data && (data.messageId || data.conversationId)) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid message read data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling message read:', error);
+    }
+  };
+
+  const messageDeletedHandler = (data) => {
+    try {
+      console.log('Message deleted event:', data);
+      if (data && (data.messageId || data.conversationId)) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid message deleted data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling message delete:', error);
+    }
+  };
+
+  const messageRecalledHandler = (data) => {
+    try {
+      console.log('Message recalled event:', data);
+      if (data && (data.messageId || data.conversationId)) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid message recall data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling message recall:', error);
+    }
+  };
+
+  const userStatusHandler = (data) => {
+    try {
+      console.log('User status changed:', data);
+      if (data && data.userId) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid user status data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling user status:', error);
+    }
+  };
+
+  const groupCreatedHandler = (data) => {
+    try {
+      console.log('New group created:', data);
+      if (data && data.groupId) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid group created data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling group creation:', error);
+    }
+  };
+
+  const groupAddedHandler = (data) => {
+    try {
+      console.log('Added to group:', data);
+      if (data && data.groupId) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid group added data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling group addition:', error);
+    }
+  };
+
+  // Toggle the dropdown menu
   const toggleDropdownMenu = () => {
     setShowDropdownMenu(!showDropdownMenu)
   }
 
+  // Initialize socket connection
+  const initializeSocket = async () => {
+    try {
+      setLoading(true);
+      console.log("Initializing socket connection...");
+      const success = await socketService.init();
+      
+      if (success) {
+        console.log("Socket initialized successfully");
+        setSocketConnected(true);
+        // Only set up listeners after successful connection
+        setupSocketListeners();
+      } else {
+        console.error("Failed to initialize socket");
+        setSocketConnected(false);
+        setError("Không thể kết nối với máy chủ");
+      }
+    } catch (error) {
+      console.error("Error connecting to socket:", error);
+      setSocketConnected(false);
+      setError("Lỗi kết nối với máy chủ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Setup socket event listeners
+  const setupSocketListeners = () => {
+    if (!socketService.isConnected) {
+      console.log("Socket not connected, cannot setup listeners");
+      return;
+    }
+
+    console.log("Setting up socket listeners");
+    
+    try {
+      socketService.on(SOCKET_EVENTS.NEW_MESSAGE, messageHandler);
+      socketService.on(SOCKET_EVENTS.MESSAGE_READ, messageReadHandler);
+      socketService.on(SOCKET_EVENTS.MESSAGE_DELETED, messageDeletedHandler);
+      socketService.on(SOCKET_EVENTS.MESSAGE_RECALLED, messageRecalledHandler);
+      socketService.on(SOCKET_EVENTS.USER_STATUS, userStatusHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_CREATED, groupCreatedHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_ADDED, groupAddedHandler);
+      console.log("Successfully set up all socket listeners");
+    } catch (error) {
+      console.error("Error setting up socket listeners:", error);
+    }
+  };
+
+  // Clean up socket listeners
+  const cleanupSocketListeners = () => {
+    console.log("Cleaning up socket listeners");
+    try {
+      socketService.off(SOCKET_EVENTS.NEW_MESSAGE, messageHandler);
+      socketService.off(SOCKET_EVENTS.MESSAGE_READ, messageReadHandler);
+      socketService.off(SOCKET_EVENTS.MESSAGE_DELETED, messageDeletedHandler);
+      socketService.off(SOCKET_EVENTS.MESSAGE_RECALLED, messageRecalledHandler);
+      socketService.off(SOCKET_EVENTS.USER_STATUS, userStatusHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_CREATED, groupCreatedHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_ADDED, groupAddedHandler);
+      console.log("Successfully cleaned up all socket listeners");
+    } catch (error) {
+      console.error("Error cleaning up socket listeners:", error);
+    }
+  };
+
+  const joinAllConversations = (conversations = []) => {
+    if (!Array.isArray(conversations)) {
+      console.warn("Invalid conversations data:", conversations);
+      return;
+    }
+
+    conversations.forEach((conversation) => {
+      if (!conversation) return;
+      
+      const conversationId = conversation?._id || conversation?.id || conversation?.conversationId;
+      if (conversationId) {
+        try {
+          const success = socketService.emit("join_conversation", conversationId);
+          if (success) {
+            console.log("Joined conversation:", conversationId);
+          } else {
+            console.warn("Failed to join conversation:", conversationId);
+          }
+        } catch (error) {
+          console.error("Error joining conversation:", conversationId, error);
+        }
+      } else {
+        console.warn("Invalid conversation ID:", conversation);
+      }
+    });
+  };
+  
   useEffect(() => {
     const loadUserAndConversations = async () => {
       try {
-        setLoading(true)
-
-        // Check if user is authenticated
-        const token = await AsyncStorage.getItem("authToken")
+        setLoading(true);
+        const token = await AsyncStorage.getItem("authToken");
         if (!token) {
-          console.log("No auth token found, redirecting to login")
+          console.log("No auth token found, redirecting to login");
           navigation.reset({
             index: 0,
             routes: [{ name: "Login" }],
-          })
-          return
+          });
+          return;
         }
 
-        console.log("Auth token found, length:", token.length)
-
-        const user = await authService.getCurrentUser()
-        setCurrentUser(user)
+        const user = await authService.getCurrentUser();
+        setCurrentUser(user);
 
         if (user) {
-          console.log("User loaded successfully:", user.userId)
-          await fetchConversations()
+          console.log("User loaded successfully:", user.userId);
+          await initializeSocket();
+          const data = await fetchConversations();
+          if (data && Array.isArray(data)) {
+            joinAllConversations(data);
+          }
         } else {
-          console.log("User data not found, redirecting to login")
-          await AsyncStorage.removeItem("authToken")
+          console.log("User data not found, redirecting to login");
+          await AsyncStorage.removeItem("authToken");
           navigation.reset({
             index: 0,
             routes: [{ name: "Login" }],
-          })
+          });
         }
       } catch (err) {
-        console.error("Error loading user and conversations:", err)
-
-        // Check if error is due to authentication
+        console.error("Error loading user and conversations:", err);
         if (err.response && err.response.status === 401) {
-          console.log("Authentication error, redirecting to login")
-          await AsyncStorage.removeItem("authToken")
+          console.log("Authentication error, redirecting to login");
+          await AsyncStorage.removeItem("authToken");
           navigation.reset({
             index: 0,
             routes: [{ name: "Login" }],
-          })
+          });
         } else {
-          setError("Failed to load conversations")
+          setError("Failed to load conversations");
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadUserAndConversations()
+    loadUserAndConversations();
 
-    // Set up a refresh interval to check for new messages
-    const intervalId = setInterval(fetchConversations, 10000) // every 10 seconds
+    return () => {
+      cleanupSocketListeners();
+      if (socketService.isConnected) {
+        socketService.disconnect();
+      }
+    };
+  }, []);
 
-    return () => clearInterval(intervalId)
-  }, [])
-
-  // Add a new useEffect to listen for navigation focus events and check for refresh parameter
   useEffect(() => {
-    // Add a listener for when the screen comes into focus
     const unsubscribe = navigation.addListener("focus", () => {
-      // Check if we need to refresh conversations (coming from group creation)
       const params = navigation.getState().routes.find((r) => r.name === "MessageScreen")?.params
       if (params?.refreshConversations) {
         console.log("Refreshing conversations after group creation")
         fetchConversations()
-
-        // If we have a new group ID, we could potentially scroll to it or highlight it
         if (params.newGroupId) {
           console.log("New group created with ID:", params.newGroupId)
-          // Reset the parameter to avoid refreshing again on next focus
           navigation.setParams({ refreshConversations: undefined, newGroupId: undefined })
         }
       }
     })
-
-    // Clean up the listener when component unmounts
     return unsubscribe
   }, [navigation])
-
-  // Update the fetchConversations function to fetch group details for group conversations
   const fetchConversations = async () => {
     try {
-      // Check if token exists before making the request
-      const token = await AsyncStorage.getItem("authToken")
+      const token = await AsyncStorage.getItem("authToken");
       if (!token) {
-        console.log("No auth token found when fetching conversations")
-        setError("Authentication required")
-        return
+        console.log("No auth token found when fetching conversations");
+        setError("Authentication required");
+        return null;
       }
 
-      console.log("Fetching conversations...")
-      const data = await messageService.getConversations()
-      console.log(`Received ${data.length} conversations`)
+      console.log("Fetching conversations...");
+      const data = await messageService.getConversations();
+      if (!data || !Array.isArray(data)) {
+        console.warn("Invalid conversations data received:", data);
+        return null;
+      }
 
-      // Process conversations to ensure they have all required fields
+      console.log(`Received ${data.length} conversations`);
       const processedConversations = await Promise.all(
         data.map(async (conversation) => {
-          // For group conversations, fetch group details
+          if (!conversation) return null;
+          
           if (conversation.isGroup) {
             try {
-              // Fetch group details using conversationId
-              const groupDetails = await messageService.getGroupByConversationId(conversation.conversationId)
-
+              const groupDetails = await messageService.getGroupByConversationId(
+                conversation.conversationId || conversation._id
+              );
               return {
                 ...conversation,
                 groupName: groupDetails?.name || "Nhóm chat",
                 groupDescription: groupDetails?.description || "",
                 groupAvatarUrl: groupDetails?.avatarUrl,
                 members: groupDetails?.members || [],
-              }
+              };
             } catch (err) {
-              console.error("Error fetching group details:", err)
+              console.error("Error fetching group details:", err);
               return {
                 ...conversation,
                 groupName: conversation.groupName || "Nhóm chat",
                 members: conversation.members || [],
-              }
+              };
             }
           }
-          return conversation
-        }),
-      )
+          return conversation;
+        })
+      );
 
-      setConversations(processedConversations)
-      setError(null)
+      const validConversations = processedConversations.filter(Boolean);
+      setConversations(validConversations);
+      setError(null);
+      return validConversations;
     } catch (err) {
-      console.error("Error fetching conversations:", err)
-
-      // Check if error is due to authentication
+      console.error("Error fetching conversations:", err);
       if (err.response && err.response.status === 401) {
-        setError("Session expired. Please login again.")
-
-        // Optional: Auto redirect to login after a delay
+        setError("Session expired. Please login again.");
         setTimeout(() => {
           navigation.reset({
             index: 0,
             routes: [{ name: "Login" }],
-          })
-        }, 2000)
+          });
+        }, 2000);
       } else {
-        setError("Failed to load conversations")
+        setError("Failed to load conversations");
       }
+      return null;
     }
   }
 
-  // Update the handleConversationPress function to pass group information
   const handleConversationPress = async (conversation) => {
-    // Mark conversation as read when opening it
     if (conversation.unreadCount > 0) {
       try {
-        // Mark all unread messages as read
         if (conversation.lastMessage) {
           await messageService.markMessageAsRead(conversation.lastMessage.messageId)
         }
-
-        // Update the local state to reflect the read status
         setConversations((prevConversations) =>
           prevConversations.map((conv) =>
             conv.conversationId === conversation.conversationId ? { ...conv, unreadCount: 0 } : conv,
@@ -209,7 +382,6 @@ const MessagesScreen = ({ navigation }) => {
       isGroup: conversation.isGroup,
     })
 
-    // Navigate to chat detail screen with the correct conversation ID and group info
     navigation.navigate("ChatDetail", {
       conversation: {
         id: conversation.conversationId,
@@ -234,17 +406,13 @@ const MessagesScreen = ({ navigation }) => {
       case "file":
         return "[File]"
       case "emoji":
-        return message.content // Show the emoji directly
+        return message.content
       case "text":
       default:
-        // If sender is current user, prepend "Bạn: "
         const prefix = message.senderId === currentUser?.userId ? "Bạn: " : ""
 
-        // If message is recalled or deleted
         if (message.isRecalled) return "Tin nhắn đã bị thu hồi"
         if (message.isDeleted) return "Tin nhắn đã bị xóa"
-
-        // Truncate long messages
         let content = message.content
         if (content && content.length > 30) {
           content = content.substring(0, 27) + "..."
@@ -254,16 +422,13 @@ const MessagesScreen = ({ navigation }) => {
     }
   }
 
-  // Update the renderConversationItem function to properly display group information
   const renderConversationItem = ({ item }) => (
     <TouchableOpacity style={styles.conversationItem} onPress={() => handleConversationPress(item)}>
       <View style={styles.avatarContainer}>
         {item.isGroup ? (
           item.groupAvatarUrl ? (
-            // Group with custom avatar
             <Image source={{ uri: item.groupAvatarUrl }} style={styles.avatar} />
           ) : (
-            // Group without custom avatar - show member avatars in a grid
             <View style={styles.groupAvatarGrid}>
               {item.members && item.members.length > 0 ? (
                 item.members
@@ -282,7 +447,6 @@ const MessagesScreen = ({ navigation }) => {
                     />
                   ))
               ) : (
-                // Fallback if no members are available
                 <View style={styles.groupAvatarPlaceholder}>
                   <Ionicons name="people" size={24} color="#FFFFFF" />
                 </View>
@@ -290,7 +454,6 @@ const MessagesScreen = ({ navigation }) => {
             </View>
           )
         ) : (
-          // Regular one-on-one conversation avatar
           <Image
             source={item.participant?.avatarUrl ? { uri: item.participant.avatarUrl } : require("../assets/icon.png")}
             style={styles.avatar}
@@ -358,9 +521,6 @@ const MessagesScreen = ({ navigation }) => {
           <Ionicons name="search" size={20} color="#888" />
           <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" editable={false} />
 
-          {/* <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="qr-code" size={22} color="#FFF" />
-          </TouchableOpacity> */}
           <TouchableOpacity style={styles.headerButton} onPress={toggleDropdownMenu}>
             <Feather name="plus" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -431,6 +591,7 @@ const MessagesScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={conversations}
           renderItem={renderConversationItem}
           keyExtractor={(item) => item.conversationId.toString()}
@@ -459,7 +620,6 @@ const MessagesScreen = ({ navigation }) => {
   )
 }
 
-// Add these new styles for group avatars
 const styles = StyleSheet.create({
   container: {
     flex: 1,

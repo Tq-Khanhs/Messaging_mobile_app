@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useRef } from "react"
 import {
   View,
@@ -23,16 +21,17 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { formatMessageTime } from "../utils/timeUtils"
 import { messageService } from "../services/messageService"
-import { authService } from "../services/authService"
 import { userService } from "../services/userService"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
 import * as Clipboard from "expo-clipboard"
 import * as FileSystem from "expo-file-system"
 import * as Sharing from "expo-sharing"
 import * as MediaLibrary from "expo-media-library"
-import { friendService } from "../services/friendService"
+import ForwardScreen from "./ForwardScreen"
+import { useSocket } from "../context/SocketContext"
+import { authService } from "../services/authService"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 const { width, height } = Dimensions.get("window")
 
@@ -464,447 +463,179 @@ const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDe
   )
 }
 
-// Update the ForwardScreen component to properly handle message forwarding
-const ForwardScreen = ({ visible, onClose, contacts, onSelectContact, messageToForward }) => {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedContacts, setSelectedContacts] = useState([])
-  const [selectedConversationIds, setSelectedConversationIds] = useState([]) // Track selected conversation IDs
-  const [groups, setGroups] = useState([
-    {
-      id: "group1",
-      name: "Nhóm 12_CNM",
-      avatar: null,
-      isGroup: true,
-      memberCount: 5,
-      members: [
-        { id: "m1", avatar: require("../assets/icon.png") },
-        { id: "m2", avatar: require("../assets/icon.png") },
-        { id: "m3", avatar: require("../assets/icon.png") },
-      ],
-    },
-    {
-      id: "group2",
-      name: "DHTH17F",
-      avatar: require("../assets/icon.png"),
-      isGroup: true,
-    },
-    {
-      id: "group3",
-      name: "CN_DHKTPM17C",
-      avatar: null,
-      isGroup: true,
-      memberCount: 70,
-      members: [
-        { id: "m1", avatar: require("../assets/icon.png") },
-        { id: "m2", avatar: require("../assets/icon.png") },
-        { id: "m3", avatar: require("../assets/icon.png") },
-      ],
-    },
-    {
-      id: "group4",
-      name: "nhóm.học triết 5F🦄",
-      avatar: null,
-      isGroup: true,
-      memberCount: 10,
-      members: [
-        { id: "m1", avatar: require("../assets/icon.png") },
-        { id: "m2", avatar: require("../assets/icon.png") },
-        { id: "m3", avatar: require("../assets/icon.png") },
-      ],
-    },
-    {
-      id: "group5",
-      name: "Nhóm GDTC ca 2 lớp DHTH17B IUH",
-      avatar: null,
-      isGroup: true,
-      memberCount: 30,
-      members: [
-        { id: "m1", avatar: require("../assets/icon.png") },
-        { id: "m2", avatar: require("../assets/icon.png") },
-        { id: "m3", avatar: require("../assets/icon.png") },
-      ],
-    },
-  ])
 
-  // State for friends data
-  const [friendsData, setFriendsData] = useState({})
-  const [sortedLetters, setSortedLetters] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [isSending, setIsSending] = useState(false) // Track sending state
 
-  // Fetch friends data when the component becomes visible
-  useEffect(() => {
-    if (visible) {
-      fetchFriends()
-    }
-  }, [visible])
 
-  // Function to fetch friends from friendService
-  const fetchFriends = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Get friends from the friendService
-      const friends = await friendService.getFriends()
-
-      // Process friends data into alphabetical sections
-      const groupedFriends = processFriendsData(friends)
-      setFriendsData(groupedFriends)
-
-      // Sort letters alphabetically
-      const letters = Object.keys(groupedFriends).sort()
-      setSortedLetters(letters)
-    } catch (err) {
-      console.error("Error fetching friends for forward screen:", err)
-      setError("Không thể tải danh sách bạn bè")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Process friends data into alphabetical sections
-  const processFriendsData = (friends) => {
-    if (!friends || !Array.isArray(friends)) return {}
-
-    // Group friends by first letter of name
-    const sections = {}
-
-    friends.forEach((friend) => {
-      const firstLetter = friend.fullName.charAt(0).toUpperCase()
-
-      if (!sections[firstLetter]) {
-        sections[firstLetter] = []
-      }
-
-      sections[firstLetter].push({
-        id: friend.userId,
-        name: friend.fullName,
-        avatar: friend.avatarUrl ? { uri: friend.avatarUrl } : null,
-        letter: firstLetter,
-        conversationId: friend.conversationId, // Store conversation ID if available
-      })
-    })
-
-    return sections
-  }
-
-  const toggleSelectContact = (contact) => {
-    // Check if contact is already selected
-    if (selectedContacts.some((c) => c.id === contact.id)) {
-      // Remove from selected contacts
-      setSelectedContacts(selectedContacts.filter((c) => c.id !== contact.id))
-
-      // Remove conversation ID if it exists
-      if (contact.conversationId) {
-        setSelectedConversationIds(selectedConversationIds.filter((id) => id !== contact.conversationId))
-      }
-    } else {
-      // Add to selected contacts
-      setSelectedContacts([...selectedContacts, contact])
-
-      // Add conversation ID if it exists
-      if (contact.conversationId) {
-        setSelectedConversationIds([...selectedConversationIds, contact.conversationId])
-      }
-    }
-  }
-
-  const handleSend = async () => {
-    if (selectedContacts.length === 0 || !messageToForward) return
-
-    try {
-      setIsSending(true)
-
-      // Create an array to track successful forwards
-      const successfulForwards = []
-      const failedForwards = []
-
-      // Forward the message to each selected conversation
-      for (const contact of selectedContacts) {
-        try {
-          // First, get or create a conversation with this contact if needed
-          let conversationId = contact.conversationId
-
-          if (!conversationId) {
-            // If no conversation ID exists, create one
-            const conversation = await messageService.getOrStartConversation(contact.id)
-            conversationId = conversation.conversationId
-          }
-
-          // Forward the message to this conversation
-          await messageService.forwardMessage(messageToForward.messageId, conversationId)
-
-          // Add to successful forwards
-          successfulForwards.push(contact.name)
-        } catch (err) {
-          console.error(`Failed to forward message to ${contact.name}:`, err)
-          failedForwards.push(contact.name)
-        }
-      }
-
-      // Show success message
-      if (successfulForwards.length > 0) {
-        const message =
-          successfulForwards.length === 1
-            ? `Đã chuyển tiếp tin nhắn đến ${successfulForwards[0]}`
-            : `Đã chuyển tiếp tin nhắn đến ${successfulForwards.length} người`
-
-        Alert.alert("Thành công", message)
-      }
-
-      // Show error message if any forwards failed
-      if (failedForwards.length > 0) {
-        const message =
-          failedForwards.length === 1
-            ? `Không thể chuyển tiếp tin nhắn đến ${failedForwards[0]}`
-            : `Không thể chuyển tiếp tin nhắn đến ${failedForwards.length} người`
-
-        Alert.alert("Lỗi", message)
-      }
-
-      // Close the forward screen
-      onClose()
-    } catch (err) {
-      console.error("Error forwarding messages:", err)
-      Alert.alert("Lỗi", "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.")
-    } finally {
-      setIsSending(false)
-    }
-  }
-
-  // Filter friends and groups based on search query
-  const filterItems = (items, query) => {
-    if (!query) return items
-
-    const lowercaseQuery = query.toLowerCase()
-    return items.filter((item) => item.name.toLowerCase().includes(lowercaseQuery))
-  }
-
-  // Get the message content to display
-  const getMessageContent = () => {
-    if (!messageToForward) return ""
-
-    if (
-      messageToForward.type === "image" ||
-      (messageToForward.attachments &&
-        messageToForward.attachments.length > 0 &&
-        messageToForward.attachments[0].type.startsWith("image/"))
-    ) {
-      return "[Hình ảnh]"
-    } else if (
-      messageToForward.type === "file" ||
-      (messageToForward.attachments &&
-        messageToForward.attachments.length > 0 &&
-        !messageToForward.attachments[0].type.startsWith("image/"))
-    ) {
-      return "[File]"
-    } else {
-      return messageToForward.content || ""
-    }
-  }
-
-  if (!visible) return null
-
-  return (
-    <Modal transparent={true} visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.forwardContainer}>
-        <View style={styles.forwardHeader}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.forwardHeaderTitle}>
-            <Text style={styles.forwardTitle}>Chia sẻ</Text>
-            <Text style={styles.forwardSubtitle}>Đã chọn: {selectedContacts.length}</Text>
-          </View>
-        </View>
-
-        <View style={styles.forwardSearchContainer}>
-          <Ionicons name="search" size={20} color="#8E8E93" style={styles.forwardSearchIcon} />
-          <TextInput
-            style={styles.forwardSearchInput}
-            placeholder="Tìm kiếm"
-            placeholderTextColor="#8E8E93"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {loading ? (
-          <View style={styles.forwardLoadingContainer}>
-            <ActivityIndicator size="large" color="#0068FF" />
-          </View>
-        ) : (
-          <ScrollView style={styles.forwardScrollView}>
-            {/* Groups Section */}
-            <View style={styles.forwardSectionContainer}>
-              <Text style={styles.forwardSectionTitle}>Nhóm trò chuyện</Text>
-
-              {groups.map((group) => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={styles.forwardContactItem}
-                  onPress={() => toggleSelectContact(group)}
-                >
-                  <View style={styles.groupAvatarContainer}>
-                    {group.avatar ? (
-                      <Image source={group.avatar} style={styles.forwardContactAvatar} />
-                    ) : (
-                      <View style={styles.groupAvatarsStack}>
-                        {group.members &&
-                          group.members
-                            .slice(0, 3)
-                            .map((member, index) => (
-                              <Image
-                                key={member.id}
-                                source={member.avatar}
-                                style={[
-                                  styles.groupStackedAvatar,
-                                  { top: index * 8, left: index * 8, zIndex: 3 - index },
-                                ]}
-                              />
-                            ))}
-                        {group.memberCount && (
-                          <View style={styles.groupMemberCount}>
-                            <Text style={styles.groupMemberCountText}>{group.memberCount}</Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.forwardContactName}>{group.name}</Text>
-
-                  <View
-                    style={[
-                      styles.forwardCheckbox,
-                      selectedContacts.some((c) => c.id === group.id) && styles.forwardCheckboxSelected,
-                    ]}
-                  />
-                </TouchableOpacity>
-              ))}
-
-              <TouchableOpacity style={styles.seeMoreButton}>
-                <Text style={styles.seeMoreText}>Xem thêm</Text>
-                <Ionicons name="chevron-forward" size={20} color="#0068FF" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Friends Section */}
-            <View style={styles.forwardSectionContainer}>
-              <Text style={styles.forwardSectionTitle}>Bạn bè</Text>
-
-              {error ? (
-                <View style={styles.forwardErrorContainer}>
-                  <Text style={styles.forwardErrorText}>{error}</Text>
-                  <TouchableOpacity style={styles.forwardRetryButton} onPress={fetchFriends}>
-                    <Text style={styles.forwardRetryButtonText}>Thử lại</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                sortedLetters.map((letter) => (
-                  <View key={letter}>
-                    <Text style={styles.alphabetHeader}>{letter}</Text>
-
-                    {friendsData[letter].map((friend) => (
-                      <TouchableOpacity
-                        key={friend.id}
-                        style={styles.forwardContactItem}
-                        onPress={() => toggleSelectContact(friend)}
-                      >
-                        {friend.avatar ? (
-                          <Image source={friend.avatar} style={styles.forwardContactAvatar} />
-                        ) : (
-                          <View style={[styles.forwardContactAvatar, { backgroundColor: "#FF3B30" }]}>
-                            <Text style={styles.forwardContactInitial}>{friend.name.charAt(0).toUpperCase()}</Text>
-                          </View>
-                        )}
-
-                        <Text style={styles.forwardContactName}>{friend.name}</Text>
-
-                        <View
-                          style={[
-                            styles.forwardCheckbox,
-                            selectedContacts.some((c) => c.id === friend.id) && styles.forwardCheckboxSelected,
-                          ]}
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ))
-              )}
-            </View>
-          </ScrollView>
-        )}
-
-        <View style={styles.forwardFooter}>
-          <View style={styles.forwardInputContainer}>
-            <TextInput
-              style={[styles.forwardMessageInput, { color: "#FFFFFF" }]}
-              value={getMessageContent()}
-              editable={false}
-              multiline={true}
-              numberOfLines={2}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.forwardSendButton,
-              selectedContacts.length === 0 || isSending ? styles.forwardSendButtonDisabled : {},
-            ]}
-            onPress={handleSend}
-            disabled={selectedContacts.length === 0 || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="send" size={24} color="#FFFFFF" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  )
-}
-
-// Update the ChatDetailScreen to handle group conversations
 const ChatDetailScreen = ({ route, navigation }) => {
+
   const { conversation } = route.params
-
-  // Add this code at the beginning of the ChatDetailScreen component, right after the route and navigation declarations:
-
-  // Listen for updates to the conversation object from child screens
+  const conversationId = conversation?._id;
   useEffect(() => {
     if (route.params?.updatedConversation) {
-      // Update the conversation with the new data
       setConversation(route.params.updatedConversation)
-
-      // Clear the route params to avoid duplicate updates
       navigation.setParams({ updatedConversation: undefined })
     }
   }, [route.params?.updatedConversation])
 
-  // Add this function to the ChatDetailScreen component:
   const setConversation = (updatedConversation) => {
-    // Update the conversation object with the new data
     if (updatedConversation) {
-      conversation = updatedConversation
-
-      // If the screen needs to refresh any UI based on the conversation data
-      // For example, update the header with new member count
-      if (updatedConversation.isGroup && updatedConversation.members) {
-        // Update any UI elements that depend on the conversation data
-        // This might include the header title, member count, etc.
+      const updatedConversationData = updatedConversation
+      if (updatedConversationData.isGroup && updatedConversationData.members) {
       }
     }
   }
 
-  // Add this function to render the group avatar in the header
+  useEffect(() => {
+    if (!conversation || !conversation.id) {
+      console.log("[ChatDetail] No valid conversation, skipping socket setup")
+      return
+    }
+
+    console.log("[ChatDetail] Setting up socket for conversation:", conversation.id)
+
+    // Join chat room
+    const joinChatRoom = async () => {
+      try {
+        console.log("[ChatDetail] Attempting to join chat room:", conversation.id)
+        const success = joinChat(conversation.id)
+        if (!success) {
+          console.error("[ChatDetail] Failed to join chat room")
+          return
+        }
+        console.log("[ChatDetail] Successfully joined chat room:", conversation.id)
+      } catch (err) {
+        console.error("[ChatDetail] Error joining chat room:", err)
+      }
+    }
+
+    joinChatRoom()
+
+    // Set up message handlers
+    const newMessageHandler = (data) => {
+      console.log("[ChatDetail] New message received:", data)
+      if (data.message.conversationId === conversation.id) {
+        setMessages((prevMessages) => {
+          // Check if message already exists
+          const exists = prevMessages.some(msg => msg.messageId === data.message.messageId)
+          if (exists) {
+            console.log("[ChatDetail] Message already exists, skipping")
+            return prevMessages
+          }
+          console.log("[ChatDetail] Adding new message to state")
+          return [data.message, ...prevMessages]
+        })
+      }
+    }
+
+    const messageDeletedHandler = (data) => {
+      console.log("[ChatDetail] Message deleted event:", data)
+      if (data.conversationId === conversation.id) {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.messageId === data.messageId ? { ...msg, isDeleted: true, content: "Tin nhắn đã bị xóa" } : msg,
+          ),
+        )
+      }
+    }
+
+    const messageRecalledHandler = (data) => {
+      console.log("[ChatDetail] Message recalled event:", data)
+      if (data.conversationId === conversation.id) {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.messageId === data.messageId ? { ...msg, isRecalled: true, content: "Tin nhắn đã bị thu hồi" } : msg,
+          ),
+        )
+      }
+    }
+
+    const typingStartHandler = (data) => {
+      console.log("[ChatDetail] Typing started:", data)
+      if (data.conversationId === conversation.id && data.userId !== currentUser?.userId) {
+        setTypingIndicator(true)
+      }
+    }
+
+    const typingStopHandler = (data) => {
+      console.log("[ChatDetail] Typing stopped:", data)
+      if (data.conversationId === conversation.id && data.userId !== currentUser?.userId) {
+        setTypingIndicator(false)
+      }
+    }
+
+    // Register event listeners
+    console.log("[ChatDetail] Registering event listeners")
+    const unsubscribeNewMessage = addListener("new_message", newMessageHandler)
+    const unsubscribeMessageDeleted = addListener("message_deleted", messageDeletedHandler)
+    const unsubscribeMessageRecalled = addListener("message_recalled", messageRecalledHandler)
+    const unsubscribeTypingStart = addListener("typing_indicator", typingStartHandler)
+    const unsubscribeTypingStop = addListener("typing_indicator", typingStopHandler)
+
+    // Clean up on unmount
+    return () => {
+      console.log("[ChatDetail] Cleaning up chat room listeners")
+      leaveChat(conversation.id)
+      unsubscribeNewMessage()
+      unsubscribeMessageDeleted()
+      unsubscribeMessageRecalled()
+      unsubscribeTypingStart()
+      unsubscribeTypingStop()
+    }
+  }, [conversation, currentUser, addListener, joinChat, leaveChat])
+
+  // Handle sending messages
+  const handleSend = async () => {
+    if (inputText.trim() === "" || sending) {
+      console.log("[ChatDetail] Cannot send empty message or already sending")
+      return
+    }
+
+    try {
+      console.log("[ChatDetail] Starting to send message")
+      setSending(true)
+
+      const currentTime = new Date()
+      const newMessage = {
+        messageId: `temp-${Date.now()}`,
+        content: inputText,
+        timestamp: currentTime,
+        senderId: currentUser?.userId,
+        type: "text",
+        isDeleted: false,
+        isRecalled: false,
+        createdAt: currentTime.toISOString(),
+      }
+
+      console.log("[ChatDetail] Adding temporary message to UI")
+      // Optimistically add message to UI
+      setMessages((prev) => [newMessage, ...prev])
+      setInputText("")
+      setReplyingToMessage(null)
+
+      console.log("[ChatDetail] Sending message to server")
+      // Send message to server
+      const response = await messageService.sendTextMessage(conversation.id, inputText)
+      console.log("[ChatDetail] Server response:", response)
+
+      // Update message in UI with server response
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
+      )
+    } catch (err) {
+      console.error("[ChatDetail] Error sending message:", err)
+      Alert.alert("Lỗi", "Không thể gửi tin nhắn. Vui lòng thử lại.")
+      // Remove failed message from UI
+      setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`),
+      )
+    } finally {
+      setSending(false)
+      Keyboard.dismiss()
+    }
+  }
+
   const renderHeaderAvatar = () => {
     if (!conversation.isGroup) {
-      // Regular one-on-one conversation
       return (
         <Image
           source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
@@ -913,13 +644,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
       )
     }
 
-    // Group conversation
     if (conversation.avatar) {
-      // Group with custom avatar
       return <Image source={{ uri: conversation.avatar }} style={styles.headerAvatar} />
     }
 
-    // Group without custom avatar - show member avatars in a grid
+   
     return (
       <View style={styles.headerGroupAvatarGrid}>
         {conversation.members &&
@@ -946,12 +675,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
       </View>
     )
   }
-
-  // Refs
   const flatListRef = useRef(null)
   const inputRef = useRef(null)
-
-  // State
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState("")
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
@@ -963,21 +688,17 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [sending, setSending] = useState(false)
-  // Add these new state variables to the ChatDetailScreen component
   const [showMessageActions, setShowMessageActions] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [showForwardScreen, setShowForwardScreen] = useState(false)
   const [messageToForward, setMessageToForward] = useState(null)
-  // Add a new state to cache user details
   const [userCache, setUserCache] = useState({})
 
-  // Add this near the top of the ChatDetailScreen component, after the state declarations:
-  const userCacheRef = useRef({})
 
-  // Yêu cầu quyền truy cập vào thư viện ảnh và tệp tin
+  const userCacheRef = useRef({})
   useEffect(() => {
     ;(async () => {
-      // Yêu cầu quyền truy cập vào thư viện ảnh
+
       const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (mediaLibraryStatus !== "granted") {
         Alert.alert("Cần quyền truy cập", "Ứng dụng cần quyền truy cập vào thư viện ảnh để gửi hình ảnh và file.")
@@ -985,105 +706,117 @@ const ChatDetailScreen = ({ route, navigation }) => {
     })()
   }, [])
 
-  // State cho gallery ảnh
+
   const [galleryVisible, setGalleryVisible] = useState(false)
   const [galleryImages, setGalleryImages] = useState([])
   const [galleryInitialIndex, setGalleryInitialIndex] = useState(0)
 
-  // Update the useEffect hook to properly handle the conversation ID
+  const { isConnected, joinChat, leaveChat, emitTyping, getTypingUsers, addListener, removeListener,socket } = useSocket()
+
+  const [typingIndicator, setTypingIndicator] = useState(false)
+  const typingTimeoutRef = useRef(null)
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
-      setKeyboardVisible(true)
-      setShowAttachmentOptions(false)
-      setShowEmojiPicker(false)
-    })
-    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false))
-
-    // Load current user and messages
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        let user = null
-        if (authService && typeof authService.getCurrentUser === "function") {
-          user = await authService.getCurrentUser()
-        } else {
-          // Fallback to get user from AsyncStorage directly
-          const userString = await AsyncStorage.getItem("user")
-          user = userString ? JSON.parse(userString) : null
-        }
-        setCurrentUser(user)
-
-        // Debug the conversation object
-        console.log("Conversation object received:", conversation)
-
-        // Make sure we have a valid conversation ID
-        if (conversation && conversation.id) {
-          console.log(`Loading messages for conversation: ${conversation.id}`)
-          await fetchMessages()
-        } else {
-          console.error("No valid conversation ID provided")
-          console.error("Conversation object:", JSON.stringify(conversation))
-          setError("Invalid conversation data")
-        }
-      } catch (err) {
-        console.error("Error loading chat data:", err)
-        setError("Failed to load messages")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-
-    // Set up polling for new messages
-    const intervalId = setInterval(() => {
-      if (conversation && conversation.id) {
+    if (!conversation || !conversation.id) return
+    joinChat(conversation.id)
+    const newMessageHandler = (data) => {
+      if (data.message.conversationId === conversation.id) {
+        console.log("New message in current chat:", data)
         fetchMessages()
       }
-    }, 15000) // every 15 seconds instead of 5
+    }
+    const messageDeletedHandler = (data) => {
+      if (data.conversationId === conversation.id) {
+        console.log("Message deleted in current chat:", data)
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.messageId === data.messageId ? { ...msg, isDeleted: true, content: "Tin nhắn đã bị xóa" } : msg,
+          ),
+        )
+      }
+    }
+
+    const messageRecalledHandler = (data) => {
+      if (data.conversationId === conversation.id) {
+        console.log("Message recalled in current chat:", data)
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.messageId === data.messageId ? { ...msg, isRecalled: true, content: "Tin nhắn đã bị thu hồi" } : msg,
+          ),
+        )
+      }
+    }
+
+    const typingStartHandler = (data) => {
+      if (data.chatId === conversation.id && data.userId !== currentUser?.userId) {
+        console.log("User is typing:", data)
+        setTypingIndicator(true)
+      }
+    }
+
+    const typingStopHandler = (data) => {
+      if (data.chatId === conversation.id && data.userId !== currentUser?.userId) {
+        console.log("User stopped typing:", data)
+        setTypingIndicator(false)
+      }
+    }
+
+    const unsubscribeNewMessage = addListener("new_message", newMessageHandler)
+    const unsubscribeMessageDeleted = addListener("message_deleted", messageDeletedHandler)
+    const unsubscribeMessageRecalled = addListener("message_recalled", messageRecalledHandler)
+    const unsubscribeTypingStart = addListener("typing:start", typingStartHandler)
+    const unsubscribeTypingStop = addListener("typing:stop", typingStopHandler)
 
     return () => {
-      keyboardDidShowListener.remove()
-      keyboardDidHideListener.remove()
-      clearInterval(intervalId)
+      leaveChat(conversation.id)
+      unsubscribeNewMessage()
+      unsubscribeMessageDeleted()
+      unsubscribeMessageRecalled()
+      unsubscribeTypingStart()
+      unsubscribeTypingStop()
     }
-  }, [conversation])
-
+  }, [conversation, currentUser, addListener])
   const fetchMessages = async () => {
     try {
-      if (!conversation.id) return
+      if (!conversation || !conversation.id) {
+        console.error("No valid conversation ID provided:", conversation)
+        setError("Invalid conversation data")
+        return
+      }
 
       console.log(`Fetching messages for conversation: ${conversation.id}`)
       const data = await messageService.getMessages(conversation.id)
+      console.log(`Received ${data?.length || 0} messages:`, JSON.stringify(data?.slice(0, 2), null, 2))
 
-      // Sort messages by creation time (newest first)
+      if (!data || !Array.isArray(data)) {
+        console.error("Invalid messages data received:", data)
+        setError("Invalid message data received")
+        return
+      }
       const sortedMessages = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      console.log(`Sorted ${sortedMessages.length} messages`)
 
       setMessages(sortedMessages)
       setError(null)
     } catch (err) {
       console.error("Error fetching messages:", err)
-      setError("Failed to load messages")
+      console.error("Error details:", err.response?.data || err.message)
+      setError("Failed to load messages: " + (err.message || "Unknown error"))
     }
   }
 
   const fetchUserDetails = async (userId) => {
-    // If we already have this user in cache, return it immediately
     if (userCacheRef.current[userId]) {
       return userCacheRef.current[userId]
     }
 
     try {
-      // Check if this user is already in the state cache
       if (userCache[userId]) {
         return userCache[userId]
       }
 
-      // Fetch user details from API
       const user = await userService.getUserById(userId)
       console.log(user)
 
-      // Update both caches
       userCacheRef.current[userId] = user
       setUserCache((prevCache) => ({
         ...prevCache,
@@ -1094,51 +827,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error(`Error fetching user ${userId}:`, error)
       return null
-    }
-  }
-
-  const handleSend = async () => {
-    if (inputText.trim() === "" || sending) return
-
-    try {
-      setSending(true)
-
-      // Get the current time
-      const currentTime = new Date()
-
-      // Optimistically add message to UI
-      const newMessage = {
-        messageId: `temp-${Date.now()}`,
-        content: inputText,
-        timestamp: currentTime,
-        senderId: currentUser?.userId,
-        type: "text",
-        isDeleted: false,
-        isRecalled: false,
-        createdAt: currentTime.toISOString(),
-      }
-
-      setMessages([newMessage, ...messages])
-      setInputText("")
-      setReplyingToMessage(null)
-
-      // Actually send the message
-      console.log(`Sending message to conversation: ${conversation.id}`)
-      const response = await messageService.sendTextMessage(conversation.id, inputText)
-
-      // Update the temporary message with the real one
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
-      )
-    } catch (err) {
-      console.error("Error sending message:", err)
-      Alert.alert("Lỗi", "Không thể gửi tin nhắn. Vui lòng thử lại.")
-
-      // Remove the temporary message on error
-      setMessages((prevMessages) => prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`))
-    } finally {
-      setSending(false)
-      Keyboard.dismiss()
     }
   }
 
@@ -1163,15 +851,10 @@ const ChatDetailScreen = ({ route, navigation }) => {
   }
 
   const handleSendEmoji = async (emoji) => {
-    // If it's just an emoji with no other text, send it directly
     if (inputText.trim() === "") {
       try {
         setSending(true)
-
-        // Get the current time
         const currentTime = new Date()
-
-        // Optimistically add emoji to UI
         const newMessage = {
           messageId: `temp-${Date.now()}`,
           content: emoji,
@@ -1185,32 +868,24 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
         setMessages([newMessage, ...messages])
         setReplyingToMessage(null)
-
-        // Send the emoji message to the server
         console.log(`Sending emoji to conversation: ${conversation.id}`)
         const response = await messageService.sendEmojiMessage(conversation.id, emoji)
-
-        // Update the temporary message with the real one
         setMessages((prevMessages) =>
           prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
         )
       } catch (err) {
         console.error("Error sending emoji message:", err)
         Alert.alert("Lỗi", "Không thể gửi emoji. Vui lòng thử lại.")
-
-        // Remove the temporary message on error
         setMessages((prevMessages) => prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`))
       } finally {
         setSending(false)
       }
     } else {
-      // Otherwise, add it to the input text
       handleEmojiSelected(emoji)
     }
   }
 
   const handleMessagePress = (messageId) => {
-    // Toggle selected message for time display
     if (selectedMessageId === messageId) {
       setSelectedMessageId(null)
     } else {
@@ -1220,9 +895,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
   const handleReplyToMessage = (message) => {
     setReplyingToMessage(message)
-    // Focus the input field
     if (isKeyboardVisible === false) {
-      // This will trigger the keyboard to show
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus()
@@ -1234,17 +907,13 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const handleCancelReply = () => {
     setReplyingToMessage(null)
   }
-
-  // Update the handleLongPress function in the ChatDetailScreen component
   const handleLongPress = (message) => {
-    // Show action menu for message
     setSelectedMessage(message)
     setShowMessageActions(true)
   }
 
   const handleDeleteMessage = async (message) => {
     try {
-      // Show confirmation dialog before deleting
       Alert.alert("Xóa tin nhắn", "Bạn có chắc chắn muốn xóa tin nhắn này không?", [
         {
           text: "Hủy",
@@ -1556,9 +1225,14 @@ const ChatDetailScreen = ({ route, navigation }) => {
     })
   }, [messages, selectedMessageId, currentUser])
 
+  // Sửa renderMessage để thêm debug và xử lý trường hợp thiếu dữ liệu
   const renderMessage = ({ item }) => {
-    // In the renderMessage function, add a special case for system messages
-    // Add this before the "If message is deleted or recalled" check
+    if (!item || !item.messageId) {
+      console.error("Invalid message item:", item)
+      return null
+    }
+
+    console.log("Rendering message:", item.messageId, item.type)
 
     // Handle system messages
     if (item.type === "system") {
@@ -1580,6 +1254,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
             <Image
               source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
               style={styles.messageAvatar}
+              onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
             />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
@@ -1604,6 +1279,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
             <Image
               source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
               style={styles.messageAvatar}
+              onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
             />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
@@ -1660,6 +1336,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       (item.attachments && item.attachments.length === 1 && item.attachments[0].type.startsWith("image/"))
     ) {
       const imageUrl = item.attachments ? item.attachments[0].url : item.imageUrl || item.content
+      console.log("Rendering image message with URL:", imageUrl)
 
       return (
         <TouchableOpacity
@@ -1687,7 +1364,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
               resizeMode="cover"
               // Thêm fallback khi ảnh không tải được
               onError={(e) => {
-                console.log("Image failed to load:", e.nativeEvent.error)
+                console.log("Image failed to load:", e.nativeEvent.error, imageUrl)
               }}
               defaultSource={require("../assets/icon.png")} // Ảnh mặc định khi không tải được
             />
@@ -1800,13 +1477,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
     )
   }
 
-  // Create a component to handle message avatars with API fetching
   const MessageAvatar = ({ senderId, isGroup }) => {
     const [sender, setSender] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-      // Only fetch user details if this is a group conversation
       if (isGroup && senderId) {
         const getSender = async () => {
           try {
@@ -1821,10 +1496,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
         }
         getSender()
       }
-    }, [senderId, isGroup]) // This dependency array is already correct, but let's check the fetchUserDetails function
+    }, [senderId, isGroup])
 
     if (!isGroup) {
-      // For one-on-one conversations, just show the conversation avatar
       return (
         <Image
           source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
@@ -1834,11 +1508,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
 
     if (loading) {
-      // Show a placeholder while loading
       return <View style={[styles.messageAvatar, { backgroundColor: "#333" }]} />
     }
 
-    // For group conversations, show the sender's avatar
     return (
       <Image
         source={sender?.avatarUrl ? { uri: sender.avatarUrl } : require("../assets/icon.png")}
@@ -1849,24 +1521,16 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
   const handleFilePress = async (fileUrl, fileName, fileType) => {
     try {
-      // Kiểm tra xem URL có hợp lệ không
       if (!fileUrl) {
         throw new Error("URL file không hợp lệ")
       }
-
       console.log("Opening file:", { fileUrl, fileName, fileType })
-
-      // Hiển thị thông báo đang mở file
       Alert.alert("Đang mở file", `Đang mở "${fileName}"...`)
-
-      // Kiểm tra xem thiết bị có thể mở URL này không
       const canOpen = await Linking.canOpenURL(fileUrl)
 
       if (canOpen) {
-        // Mở file bằng ứng dụng mặc định
         await Linking.openURL(fileUrl)
       } else {
-        // Nếu không thể mở trực tiếp, hiển thị thông tin chi tiết về file
         Alert.alert("Không thể mở file", `Không tìm thấy ứng dụng nào có thể mở file "${fileName}".`, [
           {
             text: "Đóng",
@@ -1888,14 +1552,12 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  // In the ChatDetailScreen component, update the handleForwardMessage function to pass the message content
   const handleForwardMessage = (message) => {
     setShowMessageActions(false)
     setShowForwardScreen(true)
     setMessageToForward(message)
   }
 
-  // Update the handleSelectForwardContact function in the ChatDetailScreen component
   const handleSelectForwardContact = async (contact) => {
     try {
       setShowForwardScreen(false)
@@ -1917,6 +1579,53 @@ const ChatDetailScreen = ({ route, navigation }) => {
     Alert.alert("Đã lưu", "Tin nhắn đã được lưu vào Cloud của bạn.")
     setShowMessageActions(false)
   }
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      setKeyboardVisible(true)
+      setShowAttachmentOptions(false)
+      setShowEmojiPicker(false)
+    })
+    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false))
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        let user = null
+        if (authService && typeof authService.getCurrentUser === "function") {
+          user = await authService.getCurrentUser()
+        } else {
+          const userString = await AsyncStorage.getItem("user")
+          user = userString ? JSON.parse(userString) : null
+        }
+
+        if (!user) {
+          console.error("No user data found")
+          setError("User data not found")
+          return
+        }
+
+        console.log("Current user:", user)
+        setCurrentUser(user)
+        console.log("Conversation object received:", JSON.stringify(conversation, null, 2))
+        if (conversation && conversation.id) {
+          console.log(`Loading messages for conversation: ${conversation.id}`)
+          await fetchMessages()
+        } else {
+          console.error("No valid conversation ID provided")
+          console.error("Conversation object:", JSON.stringify(conversation))
+          setError("Invalid conversation data")
+        }
+      } catch (err) {
+        console.error("Error loading chat data:", err)
+        console.error("Error details:", err.response?.data || err.message)
+        setError("Failed to load messages: " + (err.message || "Unknown error"))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+    
+  }, [conversation])
 
   if (loading) {
     return (
@@ -1942,7 +1651,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     )
   }
 
-  // Update the header section in the return statement
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
@@ -1960,7 +1668,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
                 conversation: conversation,
               })
             } else {
-              // For one-on-one conversations, you might want to show user profile instead
               Alert.alert("Thông tin", `Xem thông tin của ${conversation.name}`)
             }
           }}
@@ -2033,6 +1740,12 @@ const ChatDetailScreen = ({ route, navigation }) => {
         </View>
       )}
 
+      {typingIndicator && (
+        <View style={styles.typingIndicator}>
+          <Text style={styles.typingText}>Đang nhập tin nhắn...</Text>
+        </View>
+      )}
+
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.attachmentButton} onPress={handleFileUpload}>
           <Ionicons name="document-outline" size={24} color="#0068FF" />
@@ -2049,7 +1762,24 @@ const ChatDetailScreen = ({ route, navigation }) => {
           placeholderTextColor="rgba(255, 255, 255, 0.5)"
           multiline
           value={inputText}
-          onChangeText={setInputText}
+          onChangeText={(text) => {
+            setInputText(text)
+
+            // Emit typing indicator
+            if (isConnected && conversation && conversation.id) {
+              emitTyping(conversation.id, true)
+
+              // Clear previous timeout
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current)
+              }
+
+              // Set timeout to stop typing indicator after 3 seconds
+              typingTimeoutRef.current = setTimeout(() => {
+                emitTyping(conversation.id, false)
+              }, 3000)
+            }
+          }}
         />
 
         <TouchableOpacity style={styles.attachmentButton} onPress={toggleEmojiPicker}>
@@ -2952,6 +2682,14 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     color: "#007AFF",
   },
+  typingIndicator: {
+    padding: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  typingText: { color: "#FFFFFF", fontSize: 12, fontStyle: "italic" },
 })
 
 export default ChatDetailScreen

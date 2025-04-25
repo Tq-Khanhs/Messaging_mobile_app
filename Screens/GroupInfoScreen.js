@@ -19,6 +19,8 @@ import { Ionicons, MaterialIcons, FontAwesome, Feather, AntDesign } from "@expo/
 import { useRoute } from "@react-navigation/native"
 import { groupService } from "../services/groupService"
 import { useAuth } from "../context/AuthContext"
+// Add imports at the top
+import { useSocket } from "../context/SocketContext"
 
 const GroupInfoScreen = ({ navigation }) => {
   const [pinConversation, setPinConversation] = useState(false)
@@ -29,10 +31,97 @@ const GroupInfoScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [filteredMembers, setFilteredMembers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [groupId, setGroupId] = useState(null)
+  const [error, setError] = useState(null)
+  const [conversation, setConversation] = useState(null) // Declare setConversation
 
   const route = useRoute()
-  const { conversation } = route.params || {}
+  const { conversation: initialConversation } = route.params || {}
   const { user } = useAuth()
+
+  // Inside the GroupInfoScreen component, add these hooks
+  const { addListener, removeListener } = useSocket()
+
+  useEffect(() => {
+    if (initialConversation && initialConversation.id) {
+      setConversation(initialConversation) // Initialize conversation state
+
+      const fetchGroupId = async () => {
+        try {
+          const groupDetails = await groupService.getGroupByConversationId(initialConversation.id)
+          setGroupId(groupDetails.group.groupId)
+        } catch (error) {
+          console.error("Error fetching group ID:", error)
+          setError("Không thể tải thông tin nhóm. Vui lòng thử lại sau.")
+        }
+      }
+      fetchGroupId()
+    }
+  }, [initialConversation])
+
+  // Add this useEffect to handle socket events
+  useEffect(() => {
+    if (!conversation || !conversation.id) return
+
+    // Listen for group update events
+    const groupUpdatedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Group updated:", data)
+        // Refresh group details
+        fetchGroupDetails()
+      }
+    }
+
+    // Listen for member role update events
+    const memberRoleUpdatedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Member role updated:", data)
+        // Refresh group details
+        fetchGroupDetails()
+      }
+    }
+
+    // Listen for member removed events
+    const memberRemovedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Member removed:", data)
+
+        // If current user was removed, navigate back to messages screen
+        if (data.userId === user?.userId) {
+          Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
+            { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+          ])
+        } else {
+          // Otherwise, refresh group details
+          fetchGroupDetails()
+        }
+      }
+    }
+
+    // Listen for group dissolved events
+    const groupDissolvedHandler = (data) => {
+      if (data.groupId === groupId) {
+        console.log("Group dissolved:", data)
+        Alert.alert("Thông báo", "Nhóm đã bị giải tán", [
+          { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+        ])
+      }
+    }
+
+    // Register event listeners
+    const unsubscribeGroupUpdated = addListener("group_updated", groupUpdatedHandler)
+    const unsubscribeMemberRoleUpdated = addListener("member_role_updated", memberRoleUpdatedHandler)
+    const unsubscribeMemberRemoved = addListener("member_removed", memberRemovedHandler)
+    const unsubscribeGroupDissolved = addListener("group_dissolved", groupDissolvedHandler)
+
+    // Clean up listeners on unmount
+    return () => {
+      unsubscribeGroupUpdated()
+      unsubscribeMemberRoleUpdated()
+      unsubscribeMemberRemoved()
+      unsubscribeGroupDissolved()
+    }
+  }, [groupId, user, addListener, navigation, conversation])
 
   useEffect(() => {
     // Check if current user is admin
@@ -310,6 +399,42 @@ const GroupInfoScreen = ({ navigation }) => {
       </View>
     </Modal>
   )
+
+  // Add a function to fetch group details
+  const fetchGroupDetails = async () => {
+    if (!conversation || !conversation.id) return
+
+    try {
+      setLoading(true)
+      const groupDetails = await groupService.getGroupByConversationId(conversation.id)
+      setGroupId(groupDetails.group.groupId)
+
+      // Update the conversation data with the new details
+      setConversation({
+        ...conversation,
+        members: groupDetails.group.members,
+        name: groupDetails.group.name,
+        description: groupDetails.group.description,
+        avatar: groupDetails.group.avatarUrl,
+      })
+
+      // Update the parent screen when navigating back
+      navigation.setParams({
+        updatedConversation: {
+          ...conversation,
+          members: groupDetails.group.members,
+          name: groupDetails.group.name,
+          description: groupDetails.group.description,
+          avatar: groupDetails.group.avatarUrl,
+        },
+      })
+    } catch (err) {
+      console.error("Error fetching group details:", err)
+      setError("Không thể tải thông tin nhóm. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!conversation) {
     return (

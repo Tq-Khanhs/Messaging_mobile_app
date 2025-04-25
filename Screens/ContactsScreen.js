@@ -18,13 +18,16 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
 
+// Add imports at the top
+import { useSocket } from "../context/SocketContext"
+
 // Xóa CONTACTS_DATA mẫu và thay thế bằng state
 
 const GROUPS_DATA = [
   {
     id: "1",
     name: "Nhóm 12 _ CNM",
-    lastMessage: "Bạn: Phần backend ai th���c hiện z á @All",
+    lastMessage: "Bạn: Phần backend ai thc hiện z á @All",
     time: "30 phút",
     memberCount: 5,
     avatars: [require("../assets/icon.png"), require("../assets/icon.png")],
@@ -58,10 +61,42 @@ const ContactsScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
-  // Th��m useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
+  // Inside the ContactsScreen component, add these hooks
+  const { isConnected, onlineUsers, addListener, removeListener } = useSocket()
+
+  // Thm useEffect để lấy danh sách bạn bè và số lượng lời mời kết bạn
   useEffect(() => {
     fetchFriendData()
   }, [])
+
+  // Add this useEffect to handle socket events
+  useEffect(() => {
+    // Listen for friend request events
+    const friendRequestHandler = (data) => {
+      console.log("Friend request received:", data)
+      // Update friend request count
+      setFriendRequestCount((prev) => prev + 1)
+    }
+
+    // Listen for friend request response events
+    const friendRequestResponseHandler = (data) => {
+      console.log("Friend request response:", data)
+      // Refresh friends list if request was accepted
+      if (data.status === "accepted") {
+        fetchFriendData()
+      }
+    }
+
+    // Register event listeners
+    const unsubscribeFriendRequest = addListener("friend_request", friendRequestHandler)
+    const unsubscribeFriendResponse = addListener("friend_request_response", friendRequestResponseHandler)
+
+    // Clean up listeners on unmount
+    return () => {
+      unsubscribeFriendRequest()
+      unsubscribeFriendResponse()
+    }
+  }, [addListener])
 
   // Hàm để lấy dữ liệu bạn bè và lời mời kết bạn
   const fetchFriendData = async () => {
@@ -173,9 +208,18 @@ const ContactsScreen = ({ navigation }) => {
     </TouchableOpacity>
   )
 
+  // Add a function to check if a user is online
+  const isUserOnline = (userId) => {
+    return onlineUsers.includes(userId)
+  }
+
+  // Update the renderContactItem function to show online status
   const renderContactItem = ({ item }) => (
     <View style={styles.contactItem}>
-      <Image source={item.avatar} style={styles.contactAvatar} />
+      <View style={styles.avatarContainer}>
+        <Image source={item.avatar} style={styles.contactAvatar} />
+        {isUserOnline(item.id) && <View style={styles.onlineIndicator} />}
+      </View>
       <Text style={styles.contactName}>{item.name}</Text>
       <View style={styles.contactActions}>
         <TouchableOpacity style={styles.actionButton}>
@@ -758,6 +802,18 @@ const styles = StyleSheet.create({
   addFriendButtonText: {
     color: "#FFF",
     fontSize: 16,
+  },
+  avatarContainer: { position: "relative" },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#1A1A1A",
   },
 })
 

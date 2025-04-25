@@ -3,6 +3,7 @@
 import { createContext, useState, useEffect, useContext } from "react"
 import { authService } from "../services/authService"
 import { userService } from "../services/userService"
+import socketService from "../services/socketService"
 
 const AuthContext = createContext()
 
@@ -20,6 +21,10 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           const userData = await userService.getUserProfile()
           setUser(userData.user)
+
+          // Initialize socket connection if user is already logged in
+          console.log("[AuthContext] User already logged in, initializing socket connection")
+          await socketService.init()
         }
       } catch (err) {
         console.error("Auth check error:", err)
@@ -121,6 +126,16 @@ export const AuthProvider = ({ children }) => {
       setError(null)
       const data = await authService.login(email, password)
       setUser(data.user)
+
+      // Initialize socket connection after successful login
+      try {
+        await socketService.init()
+        console.log("[AuthContext] Socket initialized after login")
+      } catch (socketErr) {
+        console.error("[AuthContext] Error initializing socket after login:", socketErr)
+        // Don't fail the login if socket fails to connect
+      }
+
       return data
     } catch (err) {
       setError(err.response?.data?.message || "Login failed")
