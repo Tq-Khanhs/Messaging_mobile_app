@@ -87,7 +87,7 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.avatarContainer}>
           <Image
             source={profileData?.avatarUrl ? { uri: profileData.avatarUrl } : require("../assets/avt.png")}
@@ -136,22 +136,23 @@ export default function ProfileScreen({ navigation, route }) {
           <Ionicons name="create-outline" size={20} color="#fff" />
           <Text style={styles.buttonText}>Chỉnh sửa</Text>
         </TouchableOpacity>
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MessagesScreen")}>
-            <Ionicons name="chatbubble-outline" size={24} color="#888" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
-            <Ionicons name="people" size={24} color="#888" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <Ionicons name="time-outline" size={24} color="#888" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-            <Ionicons name="person-outline" size={24} color="#0068FF" />
-            <Text style={styles.activeNavText}>Hồ sơ</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("MessagesScreen")}>
+          <Ionicons name="chatbubble-outline" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ContactsScreen")}>
+          <Ionicons name="people" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="time-outline" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
+          <Ionicons name="person-outline" size={24} color="#0068FF" />
+          <Text style={styles.activeNavText}>Hồ sơ</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   )
 }
@@ -160,16 +161,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#121212",
+    position: "relative",
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 20,
   },
   bottomNav: {
     flexDirection: "row",
     borderTopWidth: 0.5,
     borderTopColor: "#333",
     backgroundColor: "#1A1A1A",
-    marginTop: 100,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: "100%",
   },
   navItem: {
     flex: 1,

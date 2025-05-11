@@ -471,7 +471,7 @@ const GroupInfoScreen = ({ navigation }) => {
         {/* Add Delete Group option for admins */}
         {isCurrentUserAdmin &&
           renderSettingItem({
-            icon: <AntDesign name="delete" size={24} color="#d63031" />,
+            icon: <MaterialIcons name="delete" size={24} color="#d63031" />,
             title: "Giải tán nhóm",
             color: "#d63031",
             onPress: handleDeleteGroup,

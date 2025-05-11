@@ -86,37 +86,13 @@ const MessagesScreen = ({ navigation }) => {
     }
   };
 
-  const groupCreatedHandler = (data) => {
-   
-        fetchConversations();
-     
+  const realTimeHandler = () => {
+    fetchConversations(); 
   };
 
-  const groupAddedHandler = (data) => {
-    try {
-      console.log('Added to group:', data);
-      if (data && data.groupId) {
-        fetchConversations();
-      } else {
-        console.warn('Received invalid group added data:', data);
-      }
-    } catch (error) {
-      console.error('Error handling group addition:', error);
-    }
-  };
 
-  const memberAddedHandler = (data) => {
-    try {
-      console.log('Member added to group:', data);
-      if (data) {
-        fetchConversations(); 
-      } else {
-        console.warn('Received invalid member added data:', data);
-      }
-    } catch (error) {
-      console.error('Error handling member addition:', error);
-    }
-  };
+
+  
 
   const toggleDropdownMenu = () => {
     setShowDropdownMenu(!showDropdownMenu)
@@ -162,13 +138,17 @@ const MessagesScreen = ({ navigation }) => {
       socketService.on(SOCKET_EVENTS.MESSAGE_RECALLED, messageRecalledHandler);
       socketService.on(SOCKET_EVENTS.USER_STATUS, userStatusHandler);
 
-      socketService.on(SOCKET_EVENTS.GROUP_CREATED, groupCreatedHandler);
-      socketService.on(SOCKET_EVENTS.GROUP_DISSOLVED, groupCreatedHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_CREATED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_DISSOLVED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_ADDED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_REMOVED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_UPDATED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, realTimeHandler);
 
-      socketService.on(SOCKET_EVENTS.MEMBER_ADDED, memberAddedHandler);
-      socketService.on(SOCKET_EVENTS.MEMBER_REMOVED, memberAddedHandler);
-      socketService.on(SOCKET_EVENTS.MEMBER_LEFT, memberAddedHandler);
-      socketService.on(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberAddedHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_ADDED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_REMOVED, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_LEFT, realTimeHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, realTimeHandler);
 
       console.log("Successfully set up all socket listeners");
     } catch (error) {
@@ -184,8 +164,19 @@ const MessagesScreen = ({ navigation }) => {
       socketService.off(SOCKET_EVENTS.MESSAGE_DELETED, messageDeletedHandler);
       socketService.off(SOCKET_EVENTS.MESSAGE_RECALLED, messageRecalledHandler);
       socketService.off(SOCKET_EVENTS.USER_STATUS, userStatusHandler);
-      socketService.off(SOCKET_EVENTS.GROUP_CREATED, groupCreatedHandler);
-      socketService.off(SOCKET_EVENTS.GROUP_ADDED, groupAddedHandler);
+
+      socketService.off(SOCKET_EVENTS.GROUP_CREATED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_DISSOLVED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_ADDED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_REMOVED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_UPDATED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, realTimeHandler);
+
+      socketService.off(SOCKET_EVENTS.MEMBER_ADDED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.MEMBER_REMOVED, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.MEMBER_LEFT, realTimeHandler);
+      socketService.off(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, realTimeHandler);
+
       console.log("Successfully cleaned up all socket listeners");
     } catch (error) {
       console.error("Error cleaning up socket listeners:", error);
