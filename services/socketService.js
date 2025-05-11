@@ -146,6 +146,17 @@ class SocketService {
       this.notifyListeners(SOCKET_EVENTS.USER_LEFT, data)
     })
 
+    // Conversation events
+    this.socket.on(SOCKET_EVENTS.JOIN_CONVERSATION, (data) => {
+      console.log("[SocketService] Join conversation event:", data)
+      this.notifyListeners(SOCKET_EVENTS.JOIN_CONVERSATION, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.LEAVE_CONVERSATION, (data) => {
+      console.log("[SocketService] Leave conversation event:", data)
+      this.notifyListeners(SOCKET_EVENTS.LEAVE_CONVERSATION, data)
+    })
+
     // Message events
     this.socket.on(SOCKET_EVENTS.NEW_MESSAGE, (data) => {
       console.log("[SocketService] New message event:", data)
@@ -155,6 +166,11 @@ class SocketService {
     this.socket.on(SOCKET_EVENTS.MESSAGE_READ, (data) => {
       console.log("[SocketService] Message read event:", data)
       this.notifyListeners(SOCKET_EVENTS.MESSAGE_READ, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.MESSAGES_READ, (data) => {
+      console.log("[SocketService] Messages read event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MESSAGES_READ, data)
     })
 
     this.socket.on(SOCKET_EVENTS.MESSAGE_DELETED, (data) => {
@@ -172,7 +188,17 @@ class SocketService {
       this.notifyListeners(SOCKET_EVENTS.TYPING_INDICATOR, data)
     })
 
+    this.socket.on(SOCKET_EVENTS.MENTION, (data) => {
+      console.log("[SocketService] Mention event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MENTION, data)
+    })
+
     // Group events
+    this.socket.on(SOCKET_EVENTS.JOIN_GROUP, (data) => {
+      console.log("[SocketService] Join group event:", data)
+      this.notifyListeners(SOCKET_EVENTS.JOIN_GROUP, data)
+    })
+
     this.socket.on(SOCKET_EVENTS.GROUP_CREATED, (data) => {
       console.log("[SocketService] Group created event:", data)
       this.notifyListeners(SOCKET_EVENTS.GROUP_CREATED, data)
@@ -196,6 +222,58 @@ class SocketService {
     this.socket.on(SOCKET_EVENTS.GROUP_REMOVED, (data) => {
       console.log("[SocketService] Group removed event:", data)
       this.notifyListeners(SOCKET_EVENTS.GROUP_REMOVED, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, (data) => {
+      console.log("[SocketService] Group avatar updated event:", data)
+      this.notifyListeners(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, data)
+    })
+
+    // Member events
+    this.socket.on(SOCKET_EVENTS.MEMBER_ADDED, (data) => {
+      console.log("[SocketService] Member added event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MEMBER_ADDED, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.MEMBER_REMOVED, (data) => {
+      console.log("[SocketService] Member removed event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MEMBER_REMOVED, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.MEMBER_LEFT, (data) => {
+      console.log("[SocketService] Member left event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MEMBER_LEFT, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, (data) => {
+      console.log("[SocketService] Member role updated event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.MESSAGE_READ_BY_MEMBER, (data) => {
+      console.log("[SocketService] Message read by member event:", data)
+      this.notifyListeners(SOCKET_EVENTS.MESSAGE_READ_BY_MEMBER, data)
+    })
+
+    // Friend events
+    this.socket.on(SOCKET_EVENTS.FRIEND_REQUEST, (data) => {
+      console.log("[SocketService] Friend request event:", data)
+      this.notifyListeners(SOCKET_EVENTS.FRIEND_REQUEST, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.FRIEND_REQUEST_RESPONSE, (data) => {
+      console.log("[SocketService] Friend request response event:", data)
+      this.notifyListeners(SOCKET_EVENTS.FRIEND_REQUEST_RESPONSE, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.FRIEND_REQUEST_CANCELED, (data) => {
+      console.log("[SocketService] Friend request canceled event:", data)
+      this.notifyListeners(SOCKET_EVENTS.FRIEND_REQUEST_CANCELED, data)
+    })
+
+    this.socket.on(SOCKET_EVENTS.FRIEND_REMOVED, (data) => {
+      console.log("[SocketService] Friend removed event:", data)
+      this.notifyListeners(SOCKET_EVENTS.FRIEND_REMOVED, data)
     })
 
     // Log all incoming events
