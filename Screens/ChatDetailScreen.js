@@ -35,7 +35,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LogBox } from 'react-native';
 const { width, height } = Dimensions.get("window")
 LogBox.ignoreLogs(['Cannot read property', 'SocketService']);
-// Common emojis array
+
 const EMOJIS = [
   "😀",
   "😃",
@@ -139,7 +139,7 @@ const EMOJIS = [
   "💪",
 ]
 
-// Component để hiển thị gallery ảnh
+
 const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [scale, setScale] = useState(1)
@@ -152,12 +152,10 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
   const [doubleTapTimeout, setDoubleTapTimeout] = useState(null)
   const [lastTapTimestamp, setLastTapTimestamp] = useState(0)
 
-  // Reset transformations when changing images
   useEffect(() => {
     resetTransformations()
   }, [currentIndex])
 
-  // Reset transformations when closing the gallery
   useEffect(() => {
     if (!visible) {
       resetTransformations()
@@ -185,7 +183,7 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
     }
   }
 
-  // Handle pinch to zoom
+
   const handlePinchStart = (event) => {
     if (event.nativeEvent.touches.length === 2) {
       const touch1 = event.nativeEvent.touches[0]
@@ -213,7 +211,6 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
     setPinchStartDistance(0)
   }
 
-  // Handle pan (drag) when zoomed in
   const handlePanStart = (event) => {
     if (scale > 1 && event.nativeEvent.touches.length === 1) {
       setLastTranslateX(translateX)
@@ -227,7 +224,6 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
       const dx = touch.pageX - event.nativeEvent.touches[0].locationX
       const dy = touch.pageY - event.nativeEvent.touches[0].locationY
 
-      // Calculate boundaries to prevent dragging outside the image
       const maxTranslateX = ((scale - 1) * width) / 2
       const maxTranslateY = ((scale - 1) * height) / 2
 
@@ -239,28 +235,22 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
     }
   }
 
-  // Handle double tap to zoom
   const handleDoubleTap = (event) => {
     const now = Date.now()
     const DOUBLE_TAP_DELAY = 300 // ms
 
     if (now - lastTapTimestamp < DOUBLE_TAP_DELAY) {
-      // Double tap detected
       clearTimeout(doubleTapTimeout)
 
       if (scale > 1) {
-        // If already zoomed in, reset to normal
         resetTransformations()
       } else {
-        // Zoom in to 2x at the tap location
         const tapX = event.nativeEvent.locationX
         const tapY = event.nativeEvent.locationY
 
-        // Calculate the center point of the screen
         const centerX = width / 2
         const centerY = height / 2
 
-        // Calculate the offset from center
         const offsetX = (tapX - centerX) * 0.5
         const offsetY = (tapY - centerY) * 0.5
 
@@ -274,10 +264,8 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
 
       setLastTapTimestamp(0) // Reset
     } else {
-      // First tap
       setLastTapTimestamp(now)
 
-      // Set a timeout to detect if it's a single tap
       const timeout = setTimeout(() => {
         setLastTapTimestamp(0)
       }, DOUBLE_TAP_DELAY)
@@ -338,9 +326,7 @@ const ImageGallery = ({ images, visible, onClose, initialIndex = 0 }) => {
   )
 }
 
-// Component để hiển thị nhiều ảnh trong một tin nhắn
 const ImageGroupPreview = ({ attachments, onPress }) => {
-  // Hiển thị tối đa 4 ảnh, nếu nhiều hơn thì hiển thị số lượng còn lại
   const maxPreviewImages = 4
   const previewImages = attachments.slice(0, maxPreviewImages)
   const remainingCount = attachments.length - maxPreviewImages
@@ -388,12 +374,10 @@ const EmojiPicker = ({ onEmojiSelected }) => {
   )
 }
 const isSingleEmoji = (text) => {
-  // This regex matches a single emoji character
   const emojiRegex = /^[\p{Emoji}]$/u
   return emojiRegex.test(text)
 }
 
-// Add this new component for the message action menu
 const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDelete, message, isOwnMessage }) => {
   if (!visible) return null
   const showCopyOption =
@@ -469,7 +453,6 @@ const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDe
 const ChatDetailScreen = ({ route, navigation }) => {
 
   const { conversation } = route.params
-  // Ensure we get the correct conversation ID
   const conversationId = conversation?.id || conversation?._id;
 
   useEffect(() => {
@@ -495,7 +478,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
     console.log("[ChatDetail] Setting up socket for conversation:", conversationId)
 
-    // Join chat room
     const joinChatRoom = async () => {
       try {
         console.log("[ChatDetail] Attempting to join chat room:", conversationId)
@@ -512,20 +494,16 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
     joinChatRoom()
 
-    // Set up message handlers
     const newMessageHandler = (data) => {
       try {
-        // Debug log
         console.log("[ChatDetail] Socket new_message event received");
         
-        // If data is falsy, just fetch messages
         if (!data) {
           console.log("[ChatDetail] No data received, fetching all messages");
           fetchMessages();
           return;
         }
 
-        // Debug log the data structure
         console.log("[ChatDetail] Data structure:", {
           hasData: !!data,
           hasMessage: !!data?.message,
@@ -533,7 +511,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
           messageType: typeof data?.message
         });
 
-        // Get the conversation ID from various possible locations
         const msgConversationId = 
           data?.conversationId || 
           data?.message?.conversationId || 
@@ -548,12 +525,10 @@ const ChatDetailScreen = ({ route, navigation }) => {
           extracted: msgConversationId
         });
 
-        // Always fetch messages to ensure we're up to date
         console.log("[ChatDetail] Fetching messages");
         fetchMessages();
 
       } catch (error) {
-        // Detailed error logging
         console.log("[ChatDetail] Error in newMessageHandler:", {
           error: error.message,
           stack: error.stack,
@@ -622,7 +597,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
     };
 
-    // Register event listeners
     console.log("[ChatDetail] Registering event listeners")
     const unsubscribeNewMessage = addListener("new_message", newMessageHandler)
     const unsubscribeMessageDeleted = addListener("message_deleted", messageDeletedHandler)
@@ -630,7 +604,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const unsubscribeTypingStart = addListener("typing_indicator", typingStartHandler)
     const unsubscribeTypingStop = addListener("typing_indicator", typingStopHandler)
 
-    // Clean up on unmount
     return () => {
       console.log("[ChatDetail] Cleaning up chat room listeners")
       leaveChat(conversationId)
@@ -642,7 +615,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }, [conversationId, currentUser, addListener, joinChat, leaveChat])
 
-  // Handle sending messages
   const handleSend = async () => {
     if (inputText.trim() === "" || sending) {
       console.log("[ChatDetail] Cannot send empty message or already sending")
@@ -667,24 +639,20 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
 
       console.log("[ChatDetail] Adding temporary message to UI")
-      // Optimistically add message to UI
       setMessages((prev) => [newMessage, ...prev])
       setInputText("")
       setReplyingToMessage(null)
 
       console.log("[ChatDetail] Sending message to server")
-      // Send message to server
       const response = await messageService.sendTextMessage(conversationId, inputText)
       console.log("[ChatDetail] Server response:", response)
 
-      // Update message in UI with server response
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
       )
     } catch (err) {
       console.error("[ChatDetail] Error sending message:", err)
       Alert.alert("Lỗi", "Không thể gửi tin nhắn. Vui lòng thử lại.")
-      // Remove failed message from UI
       setMessages((prevMessages) =>
         prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`),
       )
@@ -986,14 +954,25 @@ const ChatDetailScreen = ({ route, navigation }) => {
           onPress: async () => {
             try {
               setShowMessageActions(false)
-
-              // Call the API to delete the message
               await messageService.deleteMessage(message.messageId)
 
-              // Update the UI to show the message as deleted
               setMessages((prevMessages) =>
                 prevMessages.map((msg) => (msg.messageId === message.messageId ? { ...msg, isDeleted: true } : msg)),
               )
+
+
+              if (socket) {
+                console.log("[ChatDetail] Emitting message_deleted event:", {
+                  messageId: message.messageId,
+                  conversationId: conversationId
+                });
+                socket.emit("message_deleted", {
+                  messageId: message.messageId,
+                  conversationId: conversationId
+                });
+              } else {
+                console.warn("[ChatDetail] Socket not available for message_deleted event");
+              }
 
               Alert.alert("Thành công", "Tin nhắn đã được xóa")
             } catch (err) {
@@ -1013,45 +992,52 @@ const ChatDetailScreen = ({ route, navigation }) => {
     try {
       await messageService.recallMessage(message.messageId)
 
-      // Update message in UI
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg.messageId === message.messageId ? { ...msg, isRecalled: true } : msg)),
       )
+
+      if (socket) {
+        console.log("[ChatDetail] Emitting message_recalled event:", {
+          messageId: message.messageId,
+          conversationId: conversationId
+        });
+        socket.emit("message_recalled", {
+          messageId: message.messageId,
+          conversationId: conversationId
+        });
+      } else {
+        console.warn("[ChatDetail] Socket not available for message_recalled event");
+      }
+
     } catch (err) {
       console.error("Error recalling message:", err)
       Alert.alert("Lỗi", "Không thể thu hồi tin nhắn. Vui lòng thử lại.")
     }
   }
 
-  // Hàm mở gallery ảnh
 
-  // Update the handleSingleImagePress function to properly handle image taps
   const handleSingleImagePress = (imageUrl) => {
-    // Create an array with just this image URL for the gallery
+
     openImageGallery([imageUrl])
   }
 
-  // Update the openImageGallery function to reset transformations
+
   const openImageGallery = (images, initialIndex = 0) => {
     setGalleryImages(images)
     setGalleryInitialIndex(initialIndex)
     setGalleryVisible(true)
   }
 
-  // Hàm xử lý khi nhấn vào một ảnh trong nhóm ảnh
+
   const handleImageGroupPress = (message, index) => {
-    // Tạo mảng URLs từ attachments
     const imageUrls = message.attachments.map((attachment) => attachment.url)
     openImageGallery(imageUrls, index)
   }
 
-  // Thay đổi hàm handleImageUpload để xử lý ảnh tốt hơn
+
   const handleImageUpload = async () => {
     try {
-      // Close the attachment options
       setShowAttachmentOptions(false)
-
-      // Use DocumentPicker to select images
       const result = await DocumentPicker.getDocumentAsync({
         type: ["image/*"],
         multiple: true,
@@ -1061,37 +1047,24 @@ const ChatDetailScreen = ({ route, navigation }) => {
       console.log("Document picker result:", result)
 
       if (result.canceled === false && result.assets && result.assets.length > 0) {
-        // Hiển thị thông báo đang xử lý
         Alert.alert("Đang xử lý", "Đang chuẩn bị gửi hình ảnh...")
-
-        // Nếu chọn nhiều ảnh
         if (result.assets.length > 1) {
           try {
-            // Tạo mảng URI từ các assets đã chọn
             const imageUris = result.assets.map((asset) => asset.uri)
-
-            // Gọi API để gửi nhiều ảnh
             const response = await messageService.sendImageMessage(conversationId, imageUris)
-
-            // Cập nhật UI với tin nhắn mới
             setMessages([response, ...messages])
-
             Alert.alert("Thành công", "Đã gửi nhóm hình ảnh thành công!")
           } catch (apiError) {
             console.error("Error sending multiple images:", apiError)
             Alert.alert("Lỗi", "Không thể gửi nhóm hình ảnh. Vui lòng thử lại.")
           }
         } else {
-          // Nếu chỉ chọn một ảnh
           const asset = result.assets[0]
           const imageUri = asset.uri
           console.log("Selected image URI:", imageUri)
 
           try {
-            // Gọi API để gửi một ảnh
             const response = await messageService.sendImageMessage(conversationId, [imageUri])
-
-            // Cập nhật UI với tin nhắn mới
             setMessages([response, ...messages])
 
             Alert.alert("Thành công", "Đã gửi hình ảnh thành công!")

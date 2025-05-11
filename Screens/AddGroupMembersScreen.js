@@ -19,6 +19,7 @@ import { useRoute, useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { groupService } from "../services/groupService"
 import { friendService } from "../services/friendService"
+import { useSocket } from "../context/SocketContext"
 
 const AddGroupMembersScreen = () => {
   const [loading, setLoading] = useState(true)
@@ -30,6 +31,7 @@ const AddGroupMembersScreen = () => {
   const [sections, setSections] = useState([])
   const [groupId, setGroupId] = useState(null)
   const [conversationData, setConversationData] = useState(null)
+  const { socket } = useSocket()
 
   const route = useRoute()
   const navigation = useNavigation()
@@ -152,13 +154,31 @@ const AddGroupMembersScreen = () => {
           await groupService.addGroupMembers(groupId, friend.userId)
 
           // Add to successfully added members
-          addedMembers.push({
+          const newMember = {
             userId: friend.userId,
             fullName: friend.fullName,
             avatarUrl: friend.avatarUrl,
             role: "member",
             addedBy: user?.fullName || "Unknown",
-          })
+          }
+          addedMembers.push(newMember)
+
+          // Emit socket event for each added member
+          if (socket) {
+            console.log("[AddGroupMembers] Emitting member_added event:", {
+              groupId,
+              conversationId: conversationData.id,
+              member: newMember
+            })
+            socket.emit("member_added", {
+              groupId,
+              conversationId: conversationData.id,
+              member: newMember
+            })
+          } else {
+            console.warn("[AddGroupMembers] Socket not available for member_added event")
+          }
+
         } catch (err) {
           console.error(`Error adding member ${friend.fullName}:`, err)
           // Continue with other members even if one fails
@@ -178,6 +198,20 @@ const AddGroupMembersScreen = () => {
             members: updatedMembers,
           },
         })
+
+        // Emit socket event for all added members
+        if (socket) {
+          console.log("[AddGroupMembers] Emitting members_added event:", {
+            groupId,
+            conversationId: conversationData.id,
+            members: addedMembers
+          })
+          socket.emit("members_added", {
+            groupId,
+            conversationId: conversationData.id,
+            members: addedMembers
+          })
+        }
 
         Alert.alert("Thành công", "Đã thêm thành viên vào nhóm")
       } else {

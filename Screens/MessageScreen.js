@@ -28,7 +28,6 @@ const MessagesScreen = ({ navigation }) => {
   const [socketConnected, setSocketConnected] = useState(false)
   const flatListRef = useRef(null)
 
-  // Define event handlers at component level so they're accessible in both setup and cleanup
   const messageHandler = (data) => {
     try {
       console.log('New message received:', data);
@@ -59,50 +58,16 @@ const MessagesScreen = ({ navigation }) => {
   const messageDeletedHandler = (data) => {
     try {
       console.log('Message deleted event:', data);
-      if (data && data.messageId) {
-        // Update the conversation list to show message as deleted
-        setConversations(prevConversations => 
-          prevConversations.map(conv => {
-            if (conv.lastMessage && conv.lastMessage.messageId === data.messageId) {
-              return {
-                ...conv,
-                lastMessage: {
-                  ...conv.lastMessage,
-                  isDeleted: true,
-                  content: "Tin nhắn đã bị xóa"
-                }
-              };
-            }
-            return conv;
-          })
-        );
-      }
+      fetchConversations(); 
     } catch (error) {
       console.error('Error handling message delete:', error);
     }
   };
-
+  
   const messageRecalledHandler = (data) => {
     try {
       console.log('Message recalled event:', data);
-      if (data && data.messageId) {
-        // Update the conversation list to show message as recalled
-        setConversations(prevConversations => 
-          prevConversations.map(conv => {
-            if (conv.lastMessage && conv.lastMessage.messageId === data.messageId) {
-              return {
-                ...conv,
-                lastMessage: {
-                  ...conv.lastMessage,
-                  isRecalled: true,
-                  content: "Tin nhắn đã bị thu hồi"
-                }
-              };
-            }
-            return conv;
-          })
-        );
-      }
+      fetchConversations(); 
     } catch (error) {
       console.error('Error handling message recall:', error);
     }
@@ -122,16 +87,9 @@ const MessagesScreen = ({ navigation }) => {
   };
 
   const groupCreatedHandler = (data) => {
-    try {
-      console.log('New group created:', data);
-      if (data && data.groupId) {
+   
         fetchConversations();
-      } else {
-        console.warn('Received invalid group created data:', data);
-      }
-    } catch (error) {
-      console.error('Error handling group creation:', error);
-    }
+     
   };
 
   const groupAddedHandler = (data) => {
@@ -147,12 +105,23 @@ const MessagesScreen = ({ navigation }) => {
     }
   };
 
-  // Toggle the dropdown menu
+  const memberAddedHandler = (data) => {
+    try {
+      console.log('Member added to group:', data);
+      if (data) {
+        fetchConversations(); 
+      } else {
+        console.warn('Received invalid member added data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling member addition:', error);
+    }
+  };
+
   const toggleDropdownMenu = () => {
     setShowDropdownMenu(!showDropdownMenu)
   }
 
-  // Initialize socket connection
   const initializeSocket = async () => {
     try {
       setLoading(true);
@@ -178,7 +147,6 @@ const MessagesScreen = ({ navigation }) => {
     }
   };
 
-  // Setup socket event listeners
   const setupSocketListeners = () => {
     if (!socketService.isConnected) {
       console.log("Socket not connected, cannot setup listeners");
@@ -193,15 +161,21 @@ const MessagesScreen = ({ navigation }) => {
       socketService.on(SOCKET_EVENTS.MESSAGE_DELETED, messageDeletedHandler);
       socketService.on(SOCKET_EVENTS.MESSAGE_RECALLED, messageRecalledHandler);
       socketService.on(SOCKET_EVENTS.USER_STATUS, userStatusHandler);
+
       socketService.on(SOCKET_EVENTS.GROUP_CREATED, groupCreatedHandler);
-      socketService.on(SOCKET_EVENTS.GROUP_ADDED, groupAddedHandler);
+      socketService.on(SOCKET_EVENTS.GROUP_DISSOLVED, groupCreatedHandler);
+
+      socketService.on(SOCKET_EVENTS.MEMBER_ADDED, memberAddedHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_REMOVED, memberAddedHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_LEFT, memberAddedHandler);
+      socketService.on(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberAddedHandler);
+
       console.log("Successfully set up all socket listeners");
     } catch (error) {
       console.error("Error setting up socket listeners:", error);
     }
   };
 
-  // Clean up socket listeners
   const cleanupSocketListeners = () => {
     console.log("Cleaning up socket listeners");
     try {

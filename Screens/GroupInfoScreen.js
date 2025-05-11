@@ -19,8 +19,9 @@ import { Ionicons, MaterialIcons, FontAwesome, Feather, AntDesign } from "@expo/
 import { useRoute } from "@react-navigation/native"
 import { groupService } from "../services/groupService"
 import { useAuth } from "../context/AuthContext"
-// Add imports at the top
-import { useSocket } from "../context/SocketContext"
+import socketService from "../services/socketService"
+import { SOCKET_EVENTS } from "../config/constants"
+
 
 const GroupInfoScreen = ({ navigation }) => {
   const [pinConversation, setPinConversation] = useState(false)
@@ -33,18 +34,17 @@ const GroupInfoScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
   const [groupId, setGroupId] = useState(null)
   const [error, setError] = useState(null)
-  const [conversation, setConversation] = useState(null) // Declare setConversation
-
+  const [conversation, setConversation] = useState(null) 
+  const { user } = useAuth();
   const route = useRoute()
   const { conversation: initialConversation } = route.params || {}
-  const { user } = useAuth()
+  
 
-  // Inside the GroupInfoScreen component, add these hooks
-  const { addListener, removeListener } = useSocket()
+
 
   useEffect(() => {
     if (initialConversation && initialConversation.id) {
-      setConversation(initialConversation) // Initialize conversation state
+      setConversation(initialConversation) 
 
       const fetchGroupId = async () => {
         try {
@@ -59,103 +59,85 @@ const GroupInfoScreen = ({ navigation }) => {
     }
   }, [initialConversation])
 
-  // Add this useEffect to handle socket events
-  useEffect(() => {
-    if (!conversation || !conversation.id) return
+  // useEffect(() => {
+  //   if (!conversation || !conversation.id) return
+  //   const groupUpdatedHandler = (data) => {
+  //     if (data.groupId === groupId) {
+  //       console.log("Group updated:", data)
+  //       fetchGroupDetails()
+  //     }
+  //   }
 
-    // Listen for group update events
-    const groupUpdatedHandler = (data) => {
-      if (data.groupId === groupId) {
-        console.log("Group updated:", data)
-        // Refresh group details
-        fetchGroupDetails()
-      }
-    }
+  //   const memberRoleUpdatedHandler = (data) => {
+  //     if (data.groupId === groupId) {
+  //       console.log("Member role updated:", data)
+  //       fetchGroupDetails()
+  //     }
+  //   }
 
-    // Listen for member role update events
-    const memberRoleUpdatedHandler = (data) => {
-      if (data.groupId === groupId) {
-        console.log("Member role updated:", data)
-        // Refresh group details
-        fetchGroupDetails()
-      }
-    }
+  //   const memberRemovedHandler = (data) => {
+  //     if (data.groupId === groupId) {
+  //       console.log("Member removed:", data)
+  //       if (data.userId === user?.userId) {
+  //         Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
+  //           { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+  //         ])
+  //       } else {
+  //         fetchGroupDetails()
+  //       }
+  //     }
+  //   }
 
-    // Listen for member removed events
-    const memberRemovedHandler = (data) => {
-      if (data.groupId === groupId) {
-        console.log("Member removed:", data)
+  //   const groupDissolvedHandler = (data) => {
+  //     if (data.groupId === groupId) {
+  //       console.log("Group dissolved:", data)
+  //       Alert.alert("Thông báo", "Nhóm đã bị giải tán", [
+  //         { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+  //       ])
+  //     }
+  //   }
 
-        // If current user was removed, navigate back to messages screen
-        if (data.userId === user?.userId) {
-          Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
-            { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
-          ])
-        } else {
-          // Otherwise, refresh group details
-          fetchGroupDetails()
-        }
-      }
-    }
+  //   // Register event listeners
+  //   const unsubscribeGroupUpdated = addListener("group_updated", groupUpdatedHandler)
+  //   const unsubscribeMemberRoleUpdated = addListener("member_role_updated", memberRoleUpdatedHandler)
+  //   const unsubscribeMemberRemoved = addListener("member_removed", memberRemovedHandler)
+  //   const unsubscribeGroupDissolved = addListener("group_dissolved", groupDissolvedHandler)
 
-    // Listen for group dissolved events
-    const groupDissolvedHandler = (data) => {
-      if (data.groupId === groupId) {
-        console.log("Group dissolved:", data)
-        Alert.alert("Thông báo", "Nhóm đã bị giải tán", [
-          { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
-        ])
-      }
-    }
-
-    // Register event listeners
-    const unsubscribeGroupUpdated = addListener("group_updated", groupUpdatedHandler)
-    const unsubscribeMemberRoleUpdated = addListener("member_role_updated", memberRoleUpdatedHandler)
-    const unsubscribeMemberRemoved = addListener("member_removed", memberRemovedHandler)
-    const unsubscribeGroupDissolved = addListener("group_dissolved", groupDissolvedHandler)
-
-    // Clean up listeners on unmount
-    return () => {
-      unsubscribeGroupUpdated()
-      unsubscribeMemberRoleUpdated()
-      unsubscribeMemberRemoved()
-      unsubscribeGroupDissolved()
-    }
-  }, [groupId, user, addListener, navigation, conversation])
+  //   // Clean up listeners on unmount
+  //   return () => {
+  //     unsubscribeGroupUpdated()
+  //     unsubscribeMemberRoleUpdated()
+  //     unsubscribeMemberRemoved()
+  //     unsubscribeGroupDissolved()
+  //   }
+  // }, [groupId, user, addListener, navigation, conversation])
 
   useEffect(() => {
-    // Check if current user is admin
+
     if (conversation && conversation.members && user) {
       const currentUserMember = conversation.members.find((member) => member.userId === user.userId)
 
-      // Log để debug
       console.log("Current user:", user.userId)
       console.log("Group members:", conversation.members)
       console.log("Current user member data:", currentUserMember)
 
-      // Kiểm tra chính xác vai trò admin
       const isAdmin = currentUserMember && (currentUserMember.role === "admin" || currentUserMember.isAdmin === true)
 
       console.log("Is user admin?", isAdmin)
       setIsCurrentUserAdmin(isAdmin)
 
-      // Initialize filtered members
       setFilteredMembers(conversation.members.filter((member) => member.userId !== user.userId))
     }
   }, [conversation, user])
 
-  // Update the handleLeaveGroup function to properly fetch the group ID first
   const handleLeaveGroup = async () => {
     if (isCurrentUserAdmin) {
-      // If admin, show modal to select new admin
       setShowLeaveModal(true)
     } else {
-      // If not admin, confirm and leave directly
       confirmLeaveGroup()
     }
   }
 
-  // Update the confirmLeaveGroup function to properly fetch and use the group ID
   const confirmLeaveGroup = async (newAdminId = null) => {
     try {
       setLoading(true)
@@ -166,7 +148,6 @@ const GroupInfoScreen = ({ navigation }) => {
         return
       }
 
-      // First, get the group ID from the conversation ID
       const groupDetails = await groupService.getGroupByConversationId(conversation.id)
       const groupId = groupDetails.group.groupId
 
@@ -175,12 +156,19 @@ const GroupInfoScreen = ({ navigation }) => {
       }
 
       if (isCurrentUserAdmin && newAdminId) {
-        // First, change the role of the new admin
         await groupService.changeGroupMemberRole(groupId, newAdminId, "admin")
+        socketService.emit(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, {
+          groupId: groupId,
+          conversationId: conversation.id,
+          members: [newAdminId],
+        });
       }
 
-      // Then leave the group
       await groupService.leaveGroup(groupId)
+      socketService.emit(SOCKET_EVENTS.MEMBER_LEFT, {
+        conversationId: conversation.id,
+        groupId: groupId,
+      })
 
       Alert.alert("Thành công", "Bạn đã rời khỏi nhóm", [
         { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
@@ -223,6 +211,10 @@ const GroupInfoScreen = ({ navigation }) => {
             console.log("Attempting to delete group:", groupId)
 
             const response = await groupService.deleteGroup(groupId)
+            socketService.emit(SOCKET_EVENTS.GROUP_DISSOLVED, {
+              groupId: groupId,
+              conversationId: conversation.id,
+            });
             console.log("Delete group response:", response)
 
             Alert.alert("Thành công", "Nhóm đã được giải tán", [

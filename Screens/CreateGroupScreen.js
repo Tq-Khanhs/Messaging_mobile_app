@@ -19,6 +19,8 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { friendService } from "../services/friendService"
 import { groupService } from "../services/groupService"
+import socketService from "../services/socketService"
+import { SOCKET_EVENTS } from "../config/constants"
 
 const { width } = Dimensions.get("window")
 
@@ -60,13 +62,11 @@ const CreateGroupScreen = ({ navigation }) => {
   }
 
   const organizeFriendsIntoSections = () => {
-    // Filter friends based on search query
     const filteredFriends =
       searchQuery.trim() === ""
         ? friends
         : friends.filter((friend) => friend.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    // Group friends by first letter
     const groupedFriends = filteredFriends.reduce((acc, friend) => {
       const firstLetter = friend.fullName.charAt(0).toUpperCase()
       if (!acc[firstLetter]) {
@@ -76,7 +76,6 @@ const CreateGroupScreen = ({ navigation }) => {
       return acc
     }, {})
 
-    // Convert to sections format
     const sectionsArray = Object.keys(groupedFriends)
       .sort()
       .map((letter) => ({
@@ -87,7 +86,7 @@ const CreateGroupScreen = ({ navigation }) => {
     setSections(sectionsArray)
   }
 
-  // Update the toggleSelectFriend function to track selected friends
+
   const toggleSelectFriend = (friend) => {
     if (selectedFriends.some((f) => f.userId === friend.userId)) {
       setSelectedFriends(selectedFriends.filter((f) => f.userId !== friend.userId))
@@ -96,9 +95,7 @@ const CreateGroupScreen = ({ navigation }) => {
     }
   }
 
-  // Update the handleCreateGroup function to navigate back with a refresh parameter
   const handleCreateGroup = async () => {
-    // Validate inputs
     if (!groupName.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập tên nhóm")
       return
@@ -112,35 +109,30 @@ const CreateGroupScreen = ({ navigation }) => {
     try {
       setIsCreatingGroup(true)
 
-      // Extract user IDs from selected friends
       const memberIds = selectedFriends.map((friend) => friend.userId)
-
-      // Create group data object
       const groupData = {
         name: groupName.trim(),
         description: groupDescription.trim() || "Nhóm chat mới",
         memberIds: memberIds,
       }
 
-      // Call API to create group
       const createdGroup = await groupService.createGroup(groupData)
-
-      // Show success message
+      socketService.emit(SOCKET_EVENTS.GROUP_CREATED, {
+        groupId: createdGroup.groupId,
+        conversationId: createdGroup.conversationId,
+        members: memberIds,
+      });
       Alert.alert("Thành công", `Đã tạo nhóm "${groupName}" với ${selectedFriends.length} thành viên`, [
         {
           text: "OK",
           onPress: () => {
-            // Navigate back to message screen with refresh parameter
-            navigation.navigate("MessagesScreen", {
-              refreshConversations: true,
-              newGroupId: createdGroup.conversationId,
-            })
+
+            navigation.goBack();
           },
         },
       ])
     } catch (error) {
-      console.error("Error creating group:", error)
-      Alert.alert("Lỗi", "Không thể tạo nhóm. Vui lòng thử lại sau.", [{ text: "OK" }])
+      navigation.goBack();
     } finally {
       setIsCreatingGroup(false)
     }
