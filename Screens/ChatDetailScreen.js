@@ -497,7 +497,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const newMessageHandler = (data) => {
       try {
         console.log("[ChatDetail] Socket new_message event received");
-        
+
         if (!data) {
           console.log("[ChatDetail] No data received, fetching all messages");
           fetchMessages();
@@ -511,10 +511,10 @@ const ChatDetailScreen = ({ route, navigation }) => {
           messageType: typeof data?.message
         });
 
-        const msgConversationId = 
-          data?.conversationId || 
-          data?.message?.conversationId || 
-          conversation?.id || 
+        const msgConversationId =
+          data?.conversationId ||
+          data?.message?.conversationId ||
+          conversation?.id ||
           conversation?._id;
 
         console.log("[ChatDetail] Conversation IDs:", {
@@ -540,7 +540,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const messageDeletedHandler = (data) => {
       try {
         if (!data) return;
-        
+
         console.log("[ChatDetail] Message deleted event:", data);
         if (data.conversationId === conversationId) {
           setMessages((prevMessages) =>
@@ -676,7 +676,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       return <Image source={{ uri: conversation.avatar }} style={styles.headerAvatar} />
     }
 
-   
+
     return (
       <View style={styles.headerGroupAvatarGrid}>
         {conversation.members &&
@@ -725,7 +725,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
   const userCacheRef = useRef({})
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
 
       const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (mediaLibraryStatus !== "granted") {
@@ -739,7 +739,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [galleryImages, setGalleryImages] = useState([])
   const [galleryInitialIndex, setGalleryInitialIndex] = useState(0)
 
-  const { isConnected, joinChat, leaveChat, emitTyping, getTypingUsers, addListener, removeListener,socket } = useSocket()
+  const { isConnected, joinChat, leaveChat, emitTyping, getTypingUsers, addListener, removeListener, socket } = useSocket()
 
   const [typingIndicator, setTypingIndicator] = useState(false)
   const typingTimeoutRef = useRef(null)
@@ -763,6 +763,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
     }
 
+    const realtimeHandler = () => {
+      fetchMessages()
+    }
     const messageRecalledHandler = (data) => {
       if (data.conversationId === conversationId) {
         console.log("Message recalled in current chat:", data)
@@ -781,6 +784,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
     }
 
+
     const typingStopHandler = (data) => {
       if (data.chatId === conversationId && data.userId !== currentUser?.userId) {
         console.log("User stopped typing:", data)
@@ -788,19 +792,76 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
     }
 
-    const unsubscribeNewMessage = addListener("new_message", newMessageHandler)
-    const unsubscribeMessageDeleted = addListener("message_deleted", messageDeletedHandler)
-    const unsubscribeMessageRecalled = addListener("message_recalled", messageRecalledHandler)
-    const unsubscribeTypingStart = addListener("typing:start", typingStartHandler)
-    const unsubscribeTypingStop = addListener("typing:stop", typingStopHandler)
+
+    const dissolvedHandler = () => {
+      Alert.alert(
+        "Nhóm đã bị giải tán",
+        "Quản trị viên đã giải tán nhóm. Bạn sẽ quay lại màn hình trước đó.",
+        [
+          {
+            text: "Xác nhận",
+            onPress: () => navigation.goBack(),
+          },
+        ],
+        { cancelable: false }
+      );
+    };
+    const removeMemberHandler = (data) => {
+      const { groupId, removedUser, removedBy } = data
+
+      if (removedUser.userId === currentUser.userId) {
+        Alert.alert("Bạn đã bị xóa khỏi nhóm", `Người xóa: ${removedBy.fullName}`, [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ])
+      } 
+    }
+
+    const stopListeningNewMessage = addListener("new_message", newMessageHandler);
+    const stopListeningMessageDeleted = addListener("message_deleted", messageDeletedHandler);
+    const stopListeningMessageRecalled = addListener("message_recalled", messageRecalledHandler);
+    const stopListeningTyping = addListener("typing_indicator", typingStartHandler);
+    const stopListeningTypingStop = addListener("typing_stopped", typingStopHandler);
+
+
+
+    const stopListeningGroupUpdated = addListener("group_updated", realtimeHandler);
+    const stopListeningGroupDissolved = addListener("group_dissolved", dissolvedHandler);
+    const stopListeningGroupAdded = addListener("group_added", realtimeHandler);
+    const stopListeningGroupRemoved = addListener("group_removed", removeMemberHandler);
+    const stopListeningGroupAvatarUpdated = addListener("group_avatar_updated", realtimeHandler);
+
+    const stopListeningMemberAdded = addListener("member_added", realtimeHandler);
+    const stopListeningMemberRemoved = addListener("member_removed", removeMemberHandler);
+    const stopListeningMemberLeft = addListener("member_left", realtimeHandler);
+    const stopListeningMemberRoleUpdated = addListener("member_role_updated", realtimeHandler);
+    const stopListeningMessageReadByMember = addListener("message_read_by_member", realtimeHandler);
+
+
+
+
+
 
     return () => {
-      leaveChat(conversationId)
-      unsubscribeNewMessage()
-      unsubscribeMessageDeleted()
-      unsubscribeMessageRecalled()
-      unsubscribeTypingStart()
-      unsubscribeTypingStop()
+      leaveChat(conversationId);
+      stopListeningNewMessage();
+      stopListeningMessageDeleted();
+      stopListeningMessageRecalled();
+      stopListeningTyping();
+      stopListeningTypingStop();
+
+      stopListeningGroupUpdated();
+      stopListeningGroupDissolved();
+      stopListeningGroupAdded();
+      stopListeningGroupRemoved();
+      stopListeningGroupAvatarUpdated();
+
+      stopListeningMemberAdded();
+      stopListeningMemberRemoved();
+      stopListeningMemberLeft();
+      stopListeningMemberRoleUpdated();
+      stopListeningMessageReadByMember();
+
+
     }
   }, [conversationId, currentUser, addListener])
   const fetchMessages = async () => {
@@ -1658,7 +1719,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
 
     loadData()
-    
+
   }, [conversation])
 
   if (loading) {
