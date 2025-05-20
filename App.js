@@ -26,6 +26,8 @@ import CreateGroupScreen from "./Screens/CreateGroupScreen.js"
 import GroupInfoScreen from "./Screens/GroupInfoScreen.js"
 import GroupMembersScreen from "./Screens/GroupMembersScreen"
 import AddGroupMembers from "./Screens/AddGroupMembersScreen.js"
+import { LogBox } from "react-native"
+LogBox.ignoreAllLogs(true);
 
 const Stack = createStackNavigator()
 

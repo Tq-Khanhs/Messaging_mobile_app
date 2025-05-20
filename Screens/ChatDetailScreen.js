@@ -378,7 +378,7 @@ const isSingleEmoji = (text) => {
   return emojiRegex.test(text)
 }
 
-const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDelete, message, isOwnMessage }) => {
+const MessageActionMenu = ({ visible, onClose, onForward, onReply, onRecall, onDelete, message, isOwnMessage }) => {
   if (!visible) return null
   const showCopyOption =
     message && (message.type === "text" || message.type === "emoji" || isSingleEmoji(message.content))
@@ -408,6 +408,12 @@ const MessageActionMenu = ({ visible, onClose, onForward, onCopy, onRecall, onDe
                 <Ionicons name="arrow-redo-outline" size={24} color="#0068FF" />
               </View>
               <Text style={styles.actionText}>Chuyển tiếp</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={onReply}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="arrow-undo-outline" size={24} color="#0068FF" />
+              </View>
+              <Text style={styles.actionText}>Trả lời</Text>
             </TouchableOpacity>
 
             {isOwnMessage && (
@@ -813,7 +819,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
         Alert.alert("Bạn đã bị xóa khỏi nhóm", `Người xóa: ${removedBy.fullName}`, [
           { text: "OK", onPress: () => navigation.goBack() },
         ])
-      } 
+      }
     }
 
     const stopListeningNewMessage = addListener("new_message", newMessageHandler);
@@ -1518,7 +1524,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       )
     }
 
-    // Default: text or emoji messages
+
     return (
       <TouchableOpacity
         style={[styles.messageContainer, item.isMe ? styles.myMessage : styles.theirMessage]}
@@ -1822,7 +1828,12 @@ const ChatDetailScreen = ({ route, navigation }) => {
             <View style={styles.replyBarLine} />
             <View style={styles.replyBarTextContainer}>
               <Text style={styles.replyBarName}>
-                {replyingToMessage.senderId === currentUser?.userId ? "Bạn" : conversation.name}
+                {replyingToMessage.senderId === currentUser?.userId
+                  ? "Bạn"
+                  : conversation.isGroup
+                    ?conversation.members?.find((m) => m.userId === replyingToMessage.senderId)?.fullName ||
+                      "Người dùng"
+                    : conversation.name}
               </Text>
               <Text style={styles.replyBarText} numberOfLines={1}>
                 {replyingToMessage.content}
@@ -1834,6 +1845,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
+
 
       {typingIndicator && (
         <View style={styles.typingIndicator}>
@@ -2742,19 +2754,9 @@ const styles = StyleSheet.create({
     top: -5,
     right: -5,
     backgroundColor: "#4CD964",
-    color: "#000000",
-    fontSize: 8,
-    fontWeight: "bold",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    right: -5,
-    backgroundColor: "#4CD964",
-    color: "#000000",
-    fontSize: 8,
-    fontWeight: "bold",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
     borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -2766,16 +2768,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 15,
-  },
-  actionText: {
-    fontSize: 18,
-    marginLeft: 15,
-    color: "#007AFF",
   },
   typingIndicator: {
     padding: 8,
