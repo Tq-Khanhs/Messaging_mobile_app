@@ -518,10 +518,10 @@ const ContactsScreen = ({ navigation }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
+        <TouchableOpacity style={styles.searchContainer} onPress={() => navigation.navigate("SearchScreen")}>
           <Ionicons name="search" size={20} color="#888" />
-          <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" />
-        </View>
+          <TextInput style={styles.searchInput} placeholder="Tìm kiếm" placeholderTextColor="#888" editable={false}/>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.headerButton}>
           <Ionicons name="person-add" size={22} color="#FFF" />
         </TouchableOpacity>
