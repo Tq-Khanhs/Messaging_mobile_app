@@ -15,13 +15,13 @@ import {
   TextInput,
   FlatList,
 } from "react-native"
-import { Ionicons, MaterialIcons, FontAwesome, Feather, AntDesign } from "@expo/vector-icons"
+import { Ionicons, MaterialIcons, FontAwesome, Feather } from "@expo/vector-icons"
 import { useRoute } from "@react-navigation/native"
 import { groupService } from "../services/groupService"
 import { useAuth } from "../context/AuthContext"
 import socketService from "../services/socketService"
 import { SOCKET_EVENTS } from "../config/constants"
-
+import { useSocket } from "../context/SocketContext"
 
 const GroupInfoScreen = ({ navigation }) => {
   const [pinConversation, setPinConversation] = useState(false)
@@ -34,17 +34,15 @@ const GroupInfoScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
   const [groupId, setGroupId] = useState(null)
   const [error, setError] = useState(null)
-  const [conversation, setConversation] = useState(null) 
-  const { user } = useAuth();
+  const [conversation, setConversation] = useState(null)
+  const { user } = useAuth()
+  const { addListener, removeListener } = useSocket()
   const route = useRoute()
   const { conversation: initialConversation } = route.params || {}
-  
-
-
 
   useEffect(() => {
     if (initialConversation && initialConversation.id) {
-      setConversation(initialConversation) 
+      setConversation(initialConversation)
 
       const fetchGroupId = async () => {
         try {
@@ -59,61 +57,79 @@ const GroupInfoScreen = ({ navigation }) => {
     }
   }, [initialConversation])
 
-  // useEffect(() => {
-  //   if (!conversation || !conversation.id) return
-  //   const groupUpdatedHandler = (data) => {
-  //     if (data.groupId === groupId) {
-  //       console.log("Group updated:", data)
-  //       fetchGroupDetails()
-  //     }
-  //   }
+  useEffect(() => {
+    if (!conversation || !conversation.id) return
 
-  //   const memberRoleUpdatedHandler = (data) => {
-  //     if (data.groupId === groupId) {
-  //       console.log("Member role updated:", data)
-  //       fetchGroupDetails()
-  //     }
-  //   }
+    const groupUpdatedHandler = (data) => {
+      if (data.groupId === groupId || data.conversationId === conversation.id) {
+        console.log("Group updated:", data)
+        fetchGroupDetails()
+      }
+    }
 
-  //   const memberRemovedHandler = (data) => {
-  //     if (data.groupId === groupId) {
-  //       console.log("Member removed:", data)
-  //       if (data.userId === user?.userId) {
-  //         Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
-  //           { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
-  //         ])
-  //       } else {
-  //         fetchGroupDetails()
-  //       }
-  //     }
-  //   }
+    const memberRoleUpdatedHandler = (data) => {
+      if (data.groupId === groupId || data.conversationId === conversation.id) {
+        console.log("Member role updated:", data)
+        fetchGroupDetails()
+      }
+    }
 
-  //   const groupDissolvedHandler = (data) => {
-  //     if (data.groupId === groupId) {
-  //       console.log("Group dissolved:", data)
-  //       Alert.alert("Thông báo", "Nhóm đã bị giải tán", [
-  //         { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
-  //       ])
-  //     }
-  //   }
+    const memberRemovedHandler = (data) => {
+      if (data.groupId === groupId || data.conversationId === conversation.id) {
+        console.log("Member removed:", data)
+        if (data.userId === user?.userId) {
+          Alert.alert("Thông báo", "Bạn đã bị xóa khỏi nhóm", [
+            { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+          ])
+        } else {
+          fetchGroupDetails()
+        }
+      }
+    }
 
-  //   // Register event listeners
-  //   const unsubscribeGroupUpdated = addListener("group_updated", groupUpdatedHandler)
-  //   const unsubscribeMemberRoleUpdated = addListener("member_role_updated", memberRoleUpdatedHandler)
-  //   const unsubscribeMemberRemoved = addListener("member_removed", memberRemovedHandler)
-  //   const unsubscribeGroupDissolved = addListener("group_dissolved", groupDissolvedHandler)
+    const memberLeftHandler = (data) => {
+      if (data.groupId === groupId || data.conversationId === conversation.id) {
+        fetchGroupDetails()
+      }
+    }
 
-  //   // Clean up listeners on unmount
-  //   return () => {
-  //     unsubscribeGroupUpdated()
-  //     unsubscribeMemberRoleUpdated()
-  //     unsubscribeMemberRemoved()
-  //     unsubscribeGroupDissolved()
-  //   }
-  // }, [groupId, user, addListener, navigation, conversation])
+    const groupDissolvedHandler = (data) => {
+      if (data.groupId === groupId || data.conversationId === conversation.id) {
+        console.log("Group dissolved:", data)
+        Alert.alert("Thông báo", "Nhóm đã bị giải tán", [
+          { text: "OK", onPress: () => navigation.navigate("MessagesScreen") },
+        ])
+      }
+    }
+
+    // Register event listeners
+    addListener(SOCKET_EVENTS.GROUP_UPDATED, groupUpdatedHandler)
+    addListener(SOCKET_EVENTS.GROUP_DISSOLVED, groupDissolvedHandler)
+    addListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler);
+    addListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler);
+    addListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler);
+
+    addListener(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberRoleUpdatedHandler)
+    addListener(SOCKET_EVENTS.MEMBER_REMOVED, memberRemovedHandler)
+    addListener(SOCKET_EVENTS.MEMBER_LEFT, memberLeftHandler)
+    addListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler);
+
+
+    return () => {
+      removeListener(SOCKET_EVENTS.GROUP_UPDATED, groupUpdatedHandler)
+      removeListener(SOCKET_EVENTS.GROUP_DISSOLVED, groupDissolvedHandler)
+      removeListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler);
+      removeListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler);
+      removeListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler);
+
+      removeListener(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberRoleUpdatedHandler)
+      removeListener(SOCKET_EVENTS.MEMBER_REMOVED, memberRemovedHandler)
+      removeListener(SOCKET_EVENTS.MEMBER_LEFT, memberLeftHandler)
+      removeListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler);
+    }
+  }, [groupId, user, conversation, useSocket])
 
   useEffect(() => {
-
     if (conversation && conversation.members && user) {
       const currentUserMember = conversation.members.find((member) => member.userId === user.userId)
 
@@ -161,7 +177,7 @@ const GroupInfoScreen = ({ navigation }) => {
           groupId: groupId,
           conversationId: conversation.id,
           members: [newAdminId],
-        });
+        })
       }
 
       await groupService.leaveGroup(groupId)
@@ -214,7 +230,7 @@ const GroupInfoScreen = ({ navigation }) => {
             socketService.emit(SOCKET_EVENTS.GROUP_DISSOLVED, {
               groupId: groupId,
               conversationId: conversation.id,
-            });
+            })
             console.log("Delete group response:", response)
 
             Alert.alert("Thành công", "Nhóm đã được giải tán", [
