@@ -243,6 +243,23 @@ export const messageService = {
       throw error
     }
   },
+  // Send reply message
+  sendReplyMessage: async (conversationId, replyToMessageId, content) => {
+    try {
+      console.log(`Sending reply message to conversation: ${conversationId}, replying to: ${replyToMessageId}`)
+      const response = await api.post("/messages/send/reply", {
+        conversationId,
+        replyToMessageId,
+        content,
+      })
+      console.log("Reply message sent successfully:", response.data.messageData)
+      return response.data.messageData
+    } catch (error) {
+      console.error("Send reply message error:", error)
+      throw error
+    }
+  },
+
 
   // Get unread message count
   getUnreadCount: async () => {

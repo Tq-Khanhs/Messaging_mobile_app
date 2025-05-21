@@ -642,26 +642,38 @@ const ChatDetailScreen = ({ route, navigation }) => {
         isDeleted: false,
         isRecalled: false,
         createdAt: currentTime.toISOString(),
+        replyTo: replyingToMessage
+          ? {
+            messageId: replyingToMessage.messageId,
+            content: replyingToMessage.content,
+          }
+          : null,
       }
 
       console.log("[ChatDetail] Adding temporary message to UI")
       setMessages((prev) => [newMessage, ...prev])
       setInputText("")
-      setReplyingToMessage(null)
 
-      console.log("[ChatDetail] Sending message to server")
-      const response = await messageService.sendTextMessage(conversationId, inputText)
-      console.log("[ChatDetail] Server response:", response)
+      let response
+      if (replyingToMessage) {
+        console.log("[ChatDetail] Sending reply message to server")
+        response = await messageService.sendReplyMessage(conversationId, replyingToMessage.messageId, inputText)
+        console.log("[ChatDetail] Reply server response:", response)
+      } else {
+        console.log("[ChatDetail] Sending regular message to server")
+        response = await messageService.sendTextMessage(conversationId, inputText)
+        console.log("[ChatDetail] Server response:", response)
+      }
 
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg.messageId === newMessage.messageId ? response : msg)),
       )
+
+      setReplyingToMessage(null)
     } catch (err) {
       console.error("[ChatDetail] Error sending message:", err)
       Alert.alert("Lỗi", "Không thể gửi tin nhắn. Vui lòng thử lại.")
-      setMessages((prevMessages) =>
-        prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`),
-      )
+      setMessages((prevMessages) => prevMessages.filter((msg) => msg.messageId !== `temp-${Date.now()}`))
     } finally {
       setSending(false)
       Keyboard.dismiss()
@@ -1147,8 +1159,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  // Thay đổi hàm handleFileUpload để xử lý file tốt hơn
-  // Replace the handleFileUpload function with this implementation
+
   const handleFileUpload = async () => {
     try {
       // Close the attachment options
@@ -1548,7 +1559,11 @@ const ChatDetailScreen = ({ route, navigation }) => {
         >
           {item.replyTo && (
             <View style={styles.replyContainer}>
-              <Text style={styles.replyName}>{item.replyTo.sender?.name || "Unknown"}</Text>
+              <Text style={styles.replyName}>
+                {item.replyTo.sender?.userId === currentUser?.userId
+                  ? "Bạn"
+                  : item.replyTo.sender?.fullName || "Unknown"}
+              </Text>
               <Text style={styles.replyText} numberOfLines={1}>
                 {item.replyTo.content}
               </Text>
@@ -1831,8 +1846,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
                 {replyingToMessage.senderId === currentUser?.userId
                   ? "Bạn"
                   : conversation.isGroup
-                    ?conversation.members?.find((m) => m.userId === replyingToMessage.senderId)?.fullName ||
-                      "Người dùng"
+                    ? conversation.members?.find((m) => m.userId === replyingToMessage.senderId)?.fullName ||
+                    "Người dùng"
                     : conversation.name}
               </Text>
               <Text style={styles.replyBarText} numberOfLines={1}>
