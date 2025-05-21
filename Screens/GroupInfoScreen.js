@@ -14,6 +14,7 @@ import {
   Modal,
   TextInput,
   FlatList,
+  Image,
 } from "react-native"
 import { Ionicons, MaterialIcons, FontAwesome, Feather } from "@expo/vector-icons"
 import { useRoute } from "@react-navigation/native"
@@ -22,6 +23,7 @@ import { useAuth } from "../context/AuthContext"
 import socketService from "../services/socketService"
 import { SOCKET_EVENTS } from "../config/constants"
 import { useSocket } from "../context/SocketContext"
+import * as ImagePicker from "expo-image-picker"
 
 const GroupInfoScreen = ({ navigation }) => {
   const [pinConversation, setPinConversation] = useState(false)
@@ -40,6 +42,14 @@ const GroupInfoScreen = ({ navigation }) => {
   const route = useRoute()
   const { conversation: initialConversation } = route.params || {}
 
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [newGroupName, setNewGroupName] = useState("")
+  const [newGroupDescription, setNewGroupDescription] = useState("")
+  const [avatarImage, setAvatarImage] = useState(null)
+  const [showImagePickerOptions, setShowImagePickerOptions] = useState(false)
+
+  
   useEffect(() => {
     if (initialConversation && initialConversation.id) {
       setConversation(initialConversation)
@@ -105,27 +115,28 @@ const GroupInfoScreen = ({ navigation }) => {
     // Register event listeners
     addListener(SOCKET_EVENTS.GROUP_UPDATED, groupUpdatedHandler)
     addListener(SOCKET_EVENTS.GROUP_DISSOLVED, groupDissolvedHandler)
-    addListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler);
-    addListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler);
-    addListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler);
+    addListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler)
+    addListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler)
+    addListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler)
 
     addListener(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberRoleUpdatedHandler)
     addListener(SOCKET_EVENTS.MEMBER_REMOVED, memberRemovedHandler)
     addListener(SOCKET_EVENTS.MEMBER_LEFT, memberLeftHandler)
-    addListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler);
-
+    addListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler)
+    addListener(SOCKET_EVENTS.NEW_MESSAGE, memberLeftHandler)
 
     return () => {
       removeListener(SOCKET_EVENTS.GROUP_UPDATED, groupUpdatedHandler)
       removeListener(SOCKET_EVENTS.GROUP_DISSOLVED, groupDissolvedHandler)
-      removeListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler);
-      removeListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler);
-      removeListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler);
+      removeListener(SOCKET_EVENTS.GROUP_ADDED, memberLeftHandler)
+      removeListener(SOCKET_EVENTS.GROUP_REMOVED, memberLeftHandler)
+      removeListener(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, memberLeftHandler)
 
       removeListener(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, memberRoleUpdatedHandler)
       removeListener(SOCKET_EVENTS.MEMBER_REMOVED, memberRemovedHandler)
       removeListener(SOCKET_EVENTS.MEMBER_LEFT, memberLeftHandler)
-      removeListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler);
+      removeListener(SOCKET_EVENTS.MEMBER_ADDED, memberLeftHandler)
+      removeListener(SOCKET_EVENTS.NEW_MESSAGE, memberLeftHandler)
     }
   }, [groupId, user, conversation, useSocket])
 
@@ -198,7 +209,6 @@ const GroupInfoScreen = ({ navigation }) => {
     }
   }
 
-  // Update the handleDeleteGroup function to be more consistent with error handling
   const handleDeleteGroup = async () => {
     // Kiểm tra lại quyền admin trước khi thực hiện
     if (!isCurrentUserAdmin) {
@@ -214,8 +224,6 @@ const GroupInfoScreen = ({ navigation }) => {
         onPress: async () => {
           try {
             setLoading(true)
-
-            // Get the group ID from the conversation ID
             const groupDetails = await groupService.getGroupByConversationId(conversation.id)
             const groupId = groupDetails.group.groupId
 
@@ -223,7 +231,6 @@ const GroupInfoScreen = ({ navigation }) => {
               throw new Error("Không tìm thấy thông tin nhóm")
             }
 
-            // Log thông tin trước khi gọi API
             console.log("Attempting to delete group:", groupId)
 
             const response = await groupService.deleteGroup(groupId)
@@ -270,6 +277,191 @@ const GroupInfoScreen = ({ navigation }) => {
     }
   }
 
+  const handleUpdateGroupName = async () => {
+    if (!newGroupName.trim() || !groupId) return
+
+    try {
+      setLoading(true)
+      await groupService.updateGroup(groupId, { name: newGroupName.trim() })
+
+      // Update local state
+      setConversation({
+        ...conversation,
+        name: newGroupName.trim(),
+      })
+
+      // Emit socket event
+      socketService.emit(SOCKET_EVENTS.GROUP_UPDATED, {
+        groupId: groupId,
+        conversationId: conversation.id,
+        name: newGroupName.trim(),
+      })
+
+      setIsEditingName(false)
+      Alert.alert("Thành công", "Đã cập nhật tên nhóm")
+    } catch (err) {
+      console.error("Error updating group name:", err)
+      Alert.alert("Lỗi", "Không thể cập nhật tên nhóm. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUpdateGroupDescription = async () => {
+    if (!groupId) return
+
+    try {
+      setLoading(true)
+      await groupService.updateGroup(groupId, { description: newGroupDescription.trim() })
+
+      // Update local state
+      setConversation({
+        ...conversation,
+        description: newGroupDescription.trim(),
+      })
+
+      // Emit socket event
+      socketService.emit(SOCKET_EVENTS.GROUP_UPDATED, {
+        groupId: groupId,
+        conversationId: conversation.id,
+        description: newGroupDescription.trim(),
+      })
+
+      setIsEditingDescription(false)
+      Alert.alert("Thành công", "Đã cập nhật mô tả nhóm")
+    } catch (err) {
+      console.error("Error updating group description:", err)
+      Alert.alert("Lỗi", "Không thể cập nhật mô tả nhóm. Vui lòng thử lại sau.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChangeAvatar = () => {
+    setShowImagePickerOptions(true)
+  }
+
+  const takePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
+
+      if (!permissionResult.granted) {
+        Alert.alert("Cần quyền truy cập", "Vui lòng cấp quyền truy cập máy ảnh để tiếp tục.")
+        return
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5, // Giảm chất lượng xuống để giảm kích thước file
+      })
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAvatarImage(result.assets[0].uri)
+        uploadGroupAvatar(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error)
+      Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại sau.")
+    } finally {
+      setShowImagePickerOptions(false)
+    }
+  }
+
+  const chooseFromLibrary = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+      if (!permissionResult.granted) {
+        Alert.alert("Cần quyền truy cập", "Vui lòng cấp quyền truy cập thư viện ảnh để tiếp tục.")
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5, // Giảm chất lượng xuống để giảm kích thước file
+      })
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAvatarImage(result.assets[0].uri)
+        uploadGroupAvatar(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error("Error picking image:", error)
+      Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại sau.")
+    } finally {
+      setShowImagePickerOptions(false)
+    }
+  }
+
+  const pickImage = () => {
+    setShowImagePickerOptions(true)
+  }
+
+  const uploadGroupAvatar = async (imageUri) => {
+    if (!imageUri || !groupId) {
+      Alert.alert("Lỗi", "Thiếu thông tin cần thiết để cập nhật ảnh đại diện")
+      return
+    }
+
+    try {
+      setLoading(true)
+      console.log(`Uploading avatar for group ID: ${groupId}`)
+      console.log(`Image URI: ${imageUri}`)
+
+      // Trực tiếp gọi service với imageUri
+      const response = await groupService.uploadGroupAvatar(groupId, imageUri)
+      console.log("Upload response:", response)
+
+      if (response && response.avatarUrl) {
+        // Cập nhật state với URL avatar mới
+        setConversation({
+          ...conversation,
+          avatar: response.avatarUrl,
+        })
+
+        // Thông báo cho các thành viên khác về việc cập nhật avatar
+        socketService.emit(SOCKET_EVENTS.GROUP_AVATAR_UPDATED, {
+          groupId: groupId,
+          conversationId: conversation.id,
+          avatarUrl: response.avatarUrl,
+        })
+
+        Alert.alert("Thành công", "Đã cập nhật ảnh đại diện nhóm")
+      } else {
+        throw new Error("Không nhận được URL avatar từ server")
+      }
+    } catch (err) {
+      console.error("Error uploading group avatar:", err)
+
+      // Hiển thị thông báo lỗi chi tiết hơn
+      let errorMessage = "Không thể cập nhật ảnh đại diện. Vui lòng thử lại sau."
+
+      if (err.response) {
+        console.log("Error response status:", err.response.status)
+        console.log("Error response data:", err.response.data)
+
+        if (err.response.status === 500) {
+          errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ hỗ trợ."
+        } else if (err.response.data && err.response.data.message) {
+          errorMessage = err.response.data.message
+        }
+      } else if (err.request) {
+        console.log("No response received:", err.request)
+        errorMessage = "Không nhận được phản hồi từ máy chủ. Vui lòng kiểm tra kết nối mạng."
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      Alert.alert("Lỗi", errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -282,19 +474,60 @@ const GroupInfoScreen = ({ navigation }) => {
   const renderGroupProfile = () => (
     <View style={styles.groupProfileContainer}>
       <View style={styles.avatarContainer}>
-        <View style={styles.avatar}>
-          <MaterialIcons name="people" size={40} color="#555" />
-        </View>
-        <TouchableOpacity style={styles.cameraButton}>
-          <Ionicons name="camera" size={20} color="white" />
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={isCurrentUserAdmin ? handleChangeAvatar : null}
+          disabled={!isCurrentUserAdmin}
+        >
+          {conversation?.avatar ? (
+            <Image source={{ uri: conversation.avatar }} style={{ width: 120, height: 120, borderRadius: 60 }} />
+          ) : (
+            <MaterialIcons name="people" size={40} color="#555" />
+          )}
+          {isCurrentUserAdmin && (
+            <View style={styles.cameraButton}>
+              <Ionicons name="camera" size={18} color="white" />
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
       <View style={styles.groupNameContainer}>
-        <Text style={styles.groupName}>{conversation?.name || "Nhóm chat"}</Text>
-        <TouchableOpacity style={styles.editButton}>
-          <Feather name="edit-2" size={18} color="#888" />
-        </TouchableOpacity>
+        {isEditingName ? (
+          <View style={styles.editNameContainer}>
+            <TextInput
+              style={styles.editNameInput}
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              placeholder="Nhập tên nhóm"
+              placeholderTextColor="#888"
+              autoFocus
+            />
+            <View style={styles.editNameButtons}>
+              <TouchableOpacity style={styles.editNameButton} onPress={() => setIsEditingName(false)}>
+                <Text style={styles.editNameButtonText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.editNameButton, styles.saveButton]} onPress={handleUpdateGroupName}>
+                <Text style={styles.saveButtonText}>Lưu</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.groupName}>{conversation?.name || "Nhóm chat"}</Text>
+            {isCurrentUserAdmin && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => {
+                  setNewGroupName(conversation?.name || "")
+                  setIsEditingName(true)
+                }}
+              >
+                <Feather name="edit-2" size={18} color="#888" />
+              </TouchableOpacity>
+            )}
+          </>
+        )}
       </View>
 
       <View style={styles.actionButtonsContainer}>
@@ -308,10 +541,7 @@ const GroupInfoScreen = ({ navigation }) => {
           <Text style={styles.actionButtonText}>Thêm{"\n"}thành viên</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <MaterialIcons name="wallpaper" size={24} color="white" />
-          <Text style={styles.actionButtonText}>Đổi{"\n"}hình nền</Text>
-        </TouchableOpacity>
+        
 
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="notifications" size={24} color="white" />
@@ -322,10 +552,50 @@ const GroupInfoScreen = ({ navigation }) => {
   )
 
   const renderGroupDescription = () => (
-    <TouchableOpacity style={styles.groupDescriptionButton}>
-      <Ionicons name="information-circle-outline" size={24} color="#888" />
-      <Text style={styles.groupDescriptionText}>{conversation?.description || "Thêm mô tả nhóm"}</Text>
-    </TouchableOpacity>
+    <View style={styles.groupDescriptionContainer}>
+      {isEditingDescription ? (
+        <View style={styles.editDescriptionContainer}>
+          <TextInput
+            style={styles.editDescriptionInput}
+            value={newGroupDescription}
+            onChangeText={setNewGroupDescription}
+            placeholder="Nhập mô tả nhóm"
+            placeholderTextColor="#888"
+            multiline
+            numberOfLines={3}
+            autoFocus
+          />
+          <View style={styles.editDescriptionButtons}>
+            <TouchableOpacity style={styles.editDescriptionButton} onPress={() => setIsEditingDescription(false)}>
+              <Text style={styles.editDescriptionButtonText}>Hủy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.editDescriptionButton, styles.saveButton]}
+              onPress={handleUpdateGroupDescription}
+            >
+              <Text style={styles.saveButtonText}>Lưu</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.groupDescriptionButton}
+          onPress={
+            isCurrentUserAdmin
+              ? () => {
+                  setNewGroupDescription(conversation?.description || "")
+                  setIsEditingDescription(true)
+                }
+              : null
+          }
+          disabled={!isCurrentUserAdmin}
+        >
+          <Ionicons name="information-circle-outline" size={24} color="#888" />
+          <Text style={styles.groupDescriptionText}>{conversation?.description || "Thêm mô tả nhóm"}</Text>
+          {isCurrentUserAdmin && <Feather name="edit-2" size={18} color="#888" style={{ marginLeft: 8 }} />}
+        </TouchableOpacity>
+      )}
+    </View>
   )
 
   const renderSettingItem = ({ icon, title, subtitle, rightComponent, color, onPress }) => (
@@ -408,7 +678,6 @@ const GroupInfoScreen = ({ navigation }) => {
     </Modal>
   )
 
-  // Add a function to fetch group details
   const fetchGroupDetails = async () => {
     if (!conversation || !conversation.id) return
 
@@ -443,6 +712,38 @@ const GroupInfoScreen = ({ navigation }) => {
       setLoading(false)
     }
   }
+
+  const renderImagePickerModal = () => (
+    <Modal
+      visible={showImagePickerOptions}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowImagePickerOptions(false)}
+    >
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowImagePickerOptions(false)}>
+        <View style={styles.imagePickerContainer}>
+          <View style={styles.imagePickerHeader}>
+            <View style={styles.modalHeaderLine} />
+            <Text style={styles.imagePickerTitle}>Chọn ảnh</Text>
+          </View>
+
+          <TouchableOpacity style={styles.imagePickerOption} onPress={takePhoto}>
+            <Ionicons name="camera" size={24} color="#0068FF" />
+            <Text style={styles.imagePickerOptionText}>Chụp ảnh mới</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.imagePickerOption} onPress={chooseFromLibrary}>
+            <Ionicons name="images" size={24} color="#0068FF" />
+            <Text style={styles.imagePickerOptionText}>Chọn từ thư viện</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.cancelPickerButton} onPress={() => setShowImagePickerOptions(false)}>
+            <Text style={styles.cancelPickerButtonText}>Hủy</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
 
   if (!conversation) {
     return (
@@ -495,6 +796,7 @@ const GroupInfoScreen = ({ navigation }) => {
       </ScrollView>
 
       {renderLeaveGroupModal()}
+      {renderImagePickerModal()}
     </SafeAreaView>
   )
 }
@@ -627,7 +929,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#444",
+    backgroundColor: "#0068FF",
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -635,6 +937,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#121212",
+    zIndex: 10,
   },
   groupNameContainer: {
     flexDirection: "row",
@@ -875,6 +1178,132 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  editNameContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  editNameInput: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+    borderBottomWidth: 1,
+    borderBottomColor: "#0068FF",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    width: "80%",
+    textAlign: "center",
+  },
+  editNameButtons: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+  editNameButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    marginHorizontal: 5,
+  },
+  saveButton: {
+    backgroundColor: "#0068FF",
+  },
+  editNameButtonText: {
+    color: "#0068FF",
+    fontSize: 14,
+  },
+  saveButtonText: {
+    color: "white",
+    fontSize: 14,
+  },
+  groupDescriptionContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2a2a",
+  },
+  editDescriptionContainer: {
+    padding: 16,
+  },
+  editDescriptionInput: {
+    color: "white",
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#444",
+    borderRadius: 8,
+    padding: 12,
+    textAlignVertical: "top",
+    minHeight: 80,
+  },
+  editDescriptionButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
+  },
+  editDescriptionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    marginLeft: 10,
+  },
+  editDescriptionButtonText: {
+    color: "#0068FF",
+    fontSize: 14,
+  },
+  cameraButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#0068FF",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#121212",
+  },
+  imagePickerContainer: {
+    backgroundColor: "#1C1C1E",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingBottom: 20,
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+  },
+  imagePickerHeader: {
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  imagePickerTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
+  imagePickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#333",
+  },
+  imagePickerOptionText: {
+    color: "white",
+    fontSize: 16,
+    marginLeft: 16,
+  },
+  cancelPickerButton: {
+    marginTop: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  cancelPickerButtonText: {
+    color: "#FF3B30",
+    fontSize: 16,
+    fontWeight: "500",
   },
 })
 

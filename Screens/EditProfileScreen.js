@@ -32,6 +32,14 @@ const EditProfileScreen = ({ navigation }) => {
   const [showGenderPicker, setShowGenderPicker] = useState(false)
   const [showImageOptions, setShowImageOptions] = useState(false)
 
+  // Thêm các state để theo dõi giá trị ban đầu và thay đổi
+  const [originalName] = useState(profileData?.fullName || "")
+  const [originalDob] = useState(profileData?.birthdate ? formatDate(profileData.birthdate) : "")
+  const [originalGender] = useState(profileData?.gender || "Nam")
+  const [originalAvatar] = useState(profileData?.avatarUrl || null)
+  const [pendingAvatar, setPendingAvatar] = useState(null)
+  const [hasChanges, setHasChanges] = useState(false)
+
   function formatDate(dateString) {
     if (!dateString) return ""
     const date = new Date(dateString)
@@ -45,6 +53,39 @@ const EditProfileScreen = ({ navigation }) => {
     return new Date(parts[2], parts[1] - 1, parts[0])
   }
 
+  function checkForChanges() {
+    return (
+      name !== originalName ||
+      dob !== originalDob ||
+      gender !== originalGender ||
+      pendingAvatar !== null ||
+      avatar !== originalAvatar
+    )
+  }
+
+  const handleBackPress = () => {
+    if (checkForChanges()) {
+      Alert.alert(
+        "Lưu thay đổi",
+        "Bạn có muốn lưu các thay đổi không?",
+        [
+          {
+            text: "Không",
+            onPress: () => navigation.goBack(),
+            style: "cancel",
+          },
+          {
+            text: "Có",
+            onPress: handleSave,
+          },
+        ],
+        { cancelable: false },
+      )
+    } else {
+      navigation.goBack()
+    }
+  }
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập tên")
@@ -53,7 +94,6 @@ const EditProfileScreen = ({ navigation }) => {
 
     try {
       setIsLoading(true)
-
       const userData = {
         fullName: name,
         gender: gender,
@@ -64,6 +104,27 @@ const EditProfileScreen = ({ navigation }) => {
         userData.birthdate = parsedDate.toISOString()
       }
 
+      if (pendingAvatar) {
+        try {
+          // Sử dụng hàm uploadImage mới để tải lên ảnh
+          const uploadResult = await userService.uploadImage(pendingAvatar)
+
+          // Kiểm tra kết quả và cập nhật URL avatar trong dữ liệu người dùng
+          if (uploadResult && uploadResult.imageUrl) {
+            userData.avatarUrl = uploadResult.imageUrl
+          } else if (uploadResult && uploadResult.imageUrl) {
+            userData.avatarUrl = uploadResult.imageUrl
+          } else {
+            console.error("Upload successful but no image URL returned:", uploadResult)
+          }
+        } catch (avatarError) {
+          console.error("Failed to upload avatar:", avatarError)
+          Alert.alert("Cảnh báo", "Không thể tải lên ảnh đại diện. Vẫn tiếp tục cập nhật thông tin khác.")
+          // Tiếp tục cập nhật thông tin người dùng ngay cả khi upload avatar thất bại
+        }
+      }
+
+      // Cập nhật thông tin người dùng
       await userService.updateUserProfile(userData)
 
       Alert.alert("Thành công", "Thông tin đã được cập nhật", [
@@ -94,7 +155,10 @@ const EditProfileScreen = ({ navigation }) => {
       })
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        uploadAvatar(result.assets[0].uri)
+        const selectedImageUri = result.assets[0].uri
+        setPendingAvatar(selectedImageUri)
+        setAvatar(selectedImageUri)
+        setHasChanges(true)
       }
     } catch (error) {
       Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.")
@@ -119,24 +183,13 @@ const EditProfileScreen = ({ navigation }) => {
       })
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        uploadAvatar(result.assets[0].uri)
+        const selectedImageUri = result.assets[0].uri
+        setPendingAvatar(selectedImageUri)
+        setAvatar(selectedImageUri)
+        setHasChanges(true)
       }
     } catch (error) {
       Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.")
-    }
-  }
-
-  const uploadAvatar = async (imageUri) => {
-    try {
-      setIsLoading(true)
-      const response = await userService.uploadAvatar(imageUri)
-      setAvatar(response.avatarUrl)
-      Alert.alert("Thành công", "Ảnh đại diện đã được cập nhật")
-    } catch (error) {
-      console.error("Failed to upload avatar:", error)
-      Alert.alert("Lỗi", "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.")
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -145,7 +198,7 @@ const EditProfileScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chỉnh sửa thông tin</Text>
@@ -171,7 +224,10 @@ const EditProfileScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text)
+              setHasChanges(checkForChanges())
+            }}
             placeholder="Nhập tên Zalo"
             placeholderTextColor="#555"
           />
@@ -182,7 +238,10 @@ const EditProfileScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={dob}
-            onChangeText={setDob}
+            onChangeText={(text) => {
+              setDob(text)
+              setHasChanges(checkForChanges())
+            }}
             placeholder="DD/MM/YYYY"
             placeholderTextColor="#555"
             keyboardType="numeric"
@@ -216,6 +275,7 @@ const EditProfileScreen = ({ navigation }) => {
               onPress={() => {
                 setGender("Nam")
                 setShowGenderPicker(false)
+                setHasChanges(checkForChanges())
               }}
             >
               <Text style={styles.modalOptionText}>Nam</Text>
@@ -227,6 +287,7 @@ const EditProfileScreen = ({ navigation }) => {
               onPress={() => {
                 setGender("Nữ")
                 setShowGenderPicker(false)
+                setHasChanges(checkForChanges())
               }}
             >
               <Text style={styles.modalOptionText}>Nữ</Text>
@@ -238,6 +299,7 @@ const EditProfileScreen = ({ navigation }) => {
               onPress={() => {
                 setGender("Khác")
                 setShowGenderPicker(false)
+                setHasChanges(checkForChanges())
               }}
             >
               <Text style={styles.modalOptionText}>Khác</Text>

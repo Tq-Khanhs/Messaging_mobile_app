@@ -63,6 +63,14 @@ export const userService = {
 
   uploadAvatar: async (imageUri) => {
     try {
+      console.log("Uploading avatar to:", `${api.defaults.baseURL}/users/avatar`)
+      const token = authService.getToken()
+
+      if (!token) {
+        console.error("No authentication token available")
+        throw new Error("Authentication required")
+      }
+
       const formData = new FormData()
       const uriParts = imageUri.split(".")
       const fileType = uriParts[uriParts.length - 1]
@@ -76,22 +84,27 @@ export const userService = {
       const response = await fetch(`${api.defaults.baseURL}/users/avatar`, {
         method: "POST",
         headers: {
-          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+          // KHÔNG cần thêm Content-Type ở đây, fetch sẽ tự động set đúng cho FormData
         },
         body: formData,
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error("Upload failed:", errorData)
         throw new Error(errorData.message || "Failed to upload avatar")
       }
 
-      return await response.json()
+      const result = await response.json()
+      console.log("Upload avatar response:", result)
+      return result
     } catch (error) {
       console.error("Upload avatar error:", error)
       throw error
     }
   },
+
 
   getAvatarUploadUrl: async (fileType) => {
     try {
@@ -102,7 +115,39 @@ export const userService = {
       throw error
     }
   },
+  uploadImage: async (imageUri) => {
+    try {
+      console.log("Uploading image to:", `${api.defaults.baseURL}/upload`)
 
+      const formData = new FormData()
+      const uriParts = imageUri.split(".")
+      const fileType = uriParts[uriParts.length - 1]
+
+      formData.append("image", {
+        uri: imageUri,
+        name: `image.${fileType}`,
+        type: `image/${fileType}`,
+      })
+
+      const response = await fetch(`${api.defaults.baseURL}/images/upload`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Upload failed:", errorData)
+        throw new Error(errorData.message || "Failed to upload image")
+      }
+
+      const result = await response.json()
+      console.log("Upload image response:", result)
+      return result
+    } catch (error) {
+      console.error("Upload image error:", error)
+      throw error
+    }
+  },
   confirmAvatarUpload: async (key) => {
     try {
       const response = await api.post("/users/confirm-avatar", { key })
