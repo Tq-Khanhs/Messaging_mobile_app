@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import {
   View,
   Text,
@@ -458,23 +458,24 @@ const MessageActionMenu = ({ visible, onClose, onForward, onReply, onRecall, onD
 
 const ChatDetailScreen = ({ route, navigation }) => {
 
-  const { conversation } = route.params
+  const [conversation, setConversation] = useState(route.params?.conversation);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const conversationId = conversation?.id || conversation?._id;
 
   useEffect(() => {
-    if (route.params?.updatedConversation) {
-      setConversation(route.params.updatedConversation)
-      navigation.setParams({ updatedConversation: undefined })
+    const updated = route.params?.updatedConversation;
+    if (updated) {
+      if (updated.isGroup && updated.members) {
+      } n
+      setConversation(updated);
+      navigation.setParams({ updatedConversation: undefined });
     }
-  }, [route.params?.updatedConversation])
+  }, [route.params?.updatedConversation]);
 
-  const setConversation = (updatedConversation) => {
-    if (updatedConversation) {
-      const updatedConversationData = updatedConversation
-      if (updatedConversationData.isGroup && updatedConversationData.members) {
-      }
-    }
-  }
+  useEffect(() => {
+    console.log("Conversation updated", conversation);
+  }, [conversation]);
+
 
   useEffect(() => {
     if (!conversationId) {
@@ -680,10 +681,13 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  const renderHeaderAvatar = () => {
-    if (!conversation.isGroup) {
+  const renderHeaderAvatar = useCallback(() => {
+    const avatarKey = `${conversation?.id}-${conversation?.members?.length}-${Date.now()}`;
+
+    if (!conversation?.isGroup) {
       return (
         <Image
+          key={avatarKey}
           source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
           style={styles.headerAvatar}
         />
@@ -691,18 +695,17 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
 
     if (conversation.avatar) {
-      return <Image source={{ uri: conversation.avatar }} style={styles.headerAvatar} />
+      return <Image key={avatarKey} source={{ uri: conversation.avatar }} style={styles.headerAvatar} />
     }
 
-
     return (
-      <View style={styles.headerGroupAvatarGrid}>
+      <View key={avatarKey} style={styles.headerGroupAvatarGrid}>
         {conversation.members &&
           conversation.members
             .slice(0, 4)
             .map((member, index) => (
               <Image
-                key={member.userId || index}
+                key={`${member.userId}-${index}-${avatarKey}`} // Unique key
                 source={member.avatarUrl ? { uri: member.avatarUrl } : require("../assets/icon.png")}
                 style={[
                   styles.headerGroupMemberAvatar,
@@ -713,14 +716,9 @@ const ChatDetailScreen = ({ route, navigation }) => {
                 ]}
               />
             ))}
-        {(!conversation.members || conversation.members.length === 0) && (
-          <View style={styles.headerGroupAvatarPlaceholder}>
-            <Ionicons name="people" size={20} color="#FFFFFF" />
-          </View>
-        )}
       </View>
     )
-  }
+  }, [conversation?.id, conversation?.avatar, conversation?.members, conversation?.isGroup]);
   const flatListRef = useRef(null)
   const inputRef = useRef(null)
   const [messages, setMessages] = useState([])
@@ -781,9 +779,12 @@ const ChatDetailScreen = ({ route, navigation }) => {
       }
     }
 
-    const realtimeHandler = () => {
-      fetchMessages()
-    }
+    const realtimeHandler = async () => {
+      fetchMessages();
+      fetchGroupConversationDetails();
+    };
+
+
     const messageRecalledHandler = (data) => {
       if (data.conversationId === conversationId) {
         console.log("Message recalled in current chat:", data)
@@ -854,11 +855,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const stopListeningMemberRoleUpdated = addListener("member_role_updated", realtimeHandler);
     const stopListeningMessageReadByMember = addListener("message_read_by_member", realtimeHandler);
 
-
-
-
-
-
     return () => {
       leaveChat(conversationId);
       stopListeningNewMessage();
@@ -910,6 +906,23 @@ const ChatDetailScreen = ({ route, navigation }) => {
       setError("Failed to load messages: " + (err.message || "Unknown error"))
     }
   }
+  const fetchGroupConversationDetails = async () => {
+    try {
+      if (!conversation?.isGroup) return;
+
+      const groupDetails = await messageService.getGroupByConversationId(conversationId);
+      setConversation(prev => ({
+        ...prev,
+        groupName: groupDetails?.name || prev.groupName || "Nhóm chat",
+        groupDescription: groupDetails?.description || prev.groupDescription || "",
+        groupAvatarUrl: groupDetails?.avatarUrl || prev.groupAvatarUrl,
+        avatar: groupDetails?.avatarUrl || prev.avatar,
+        members: groupDetails?.members || prev.members || [],
+      }));
+    } catch (err) {
+      console.error("Error fetching group details:", err);
+    }
+  };
 
   const fetchUserDetails = async (userId) => {
     if (userCacheRef.current[userId]) {
@@ -934,14 +947,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error(`Error fetching user ${userId}:`, error)
       return null
-    }
-  }
-
-  const toggleAttachmentOptions = () => {
-    setShowAttachmentOptions(!showAttachmentOptions)
-    setShowEmojiPicker(false)
-    if (isKeyboardVisible) {
-      Keyboard.dismiss()
     }
   }
 
@@ -1001,16 +1006,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }
 
-  const handleReplyToMessage = (message) => {
-    setReplyingToMessage(message)
-    if (isKeyboardVisible === false) {
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus()
-        }
-      }, 100)
-    }
-  }
 
   const handleCancelReply = () => {
     setReplyingToMessage(null)
