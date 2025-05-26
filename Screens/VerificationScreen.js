@@ -84,8 +84,8 @@ const VerificationScreen = ({ navigation }) => {
     } catch (err) {
       const errorMessage = err.message || "Mã xác thực không đúng. Vui lòng thử lại."
       setError(errorMessage)
-      console.error("Verification failed:", errorMessage)
-      Alert.alert("Lỗi", errorMessage)
+      console.error("Lỗi xác thực", "Mã xác thực không đúng. Vui lòng thử lại.")
+      Alert.alert("Lỗi xác thực", "Mã xác thực không đúng. Vui lòng thử lại.")
     } finally {
       setIsLoading(false)
     }

@@ -107,7 +107,6 @@ const MessagesScreen = ({ navigation }) => {
       if (success) {
         console.log("Socket initialized successfully");
         setSocketConnected(true);
-        // Only set up listeners after successful connection
         setupSocketListeners();
       } else {
         console.error("Failed to initialize socket");
@@ -150,6 +149,8 @@ const MessagesScreen = ({ navigation }) => {
       socketService.on(SOCKET_EVENTS.MEMBER_LEFT, realTimeHandler);
       socketService.on(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, realTimeHandler);
 
+      socketService.on(SOCKET_EVENTS.FRIEND_REQUEST_RESPONSE, realTimeHandler)
+
       console.log("Successfully set up all socket listeners");
     } catch (error) {
       console.error("Error setting up socket listeners:", error);
@@ -176,6 +177,8 @@ const MessagesScreen = ({ navigation }) => {
       socketService.off(SOCKET_EVENTS.MEMBER_REMOVED, realTimeHandler);
       socketService.off(SOCKET_EVENTS.MEMBER_LEFT, realTimeHandler);
       socketService.off(SOCKET_EVENTS.MEMBER_ROLE_UPDATED, realTimeHandler);
+
+      socketService.off(SOCKET_EVENTS.FRIEND_REQUEST_RESPONSE, realTimeHandler)
 
       console.log("Successfully cleaned up all socket listeners");
     } catch (error) {

@@ -104,13 +104,6 @@ const FriendRequestsScreen = ({ navigation }) => {
 
       await friendService.respondToFriendRequest(request.requestId, "accept")
 
-      try {
-        await messageService.getOrStartConversation(request.sender.userId)
-        console.log("Conversation created successfully with user:", request.sender.userId)
-      } catch (convErr) {
-        console.error("Error creating conversation:", convErr)
-      }
-
       setReceivedRequests(receivedRequests.filter((req) => req.requestId !== request.requestId))
       Alert.alert(
         "Thành công",
@@ -129,7 +122,7 @@ const FriendRequestsScreen = ({ navigation }) => {
       setLoading(true)
       await friendService.respondToFriendRequest(request.requestId, "reject")
 
-      // Update local state
+      
       setReceivedRequests(receivedRequests.filter((req) => req.requestId !== request.requestId))
       Alert.alert("Thành công", `Đã từ chối lời mời kết bạn từ ${request.sender?.fullName || "người dùng"}`)
     } catch (err) {

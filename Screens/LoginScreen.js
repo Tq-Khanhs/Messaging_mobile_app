@@ -54,7 +54,7 @@ const LoginScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#1A1A1A" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Welcome")}>
           <Icon name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đăng nhập</Text>

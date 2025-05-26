@@ -122,7 +122,7 @@ export default function UpdateProfilePictureScreen({ navigation }) {
 
           console.log("Uploading image to server...")
 
-          const response = await fetch("http://172.19.192.1:5000/api/images/upload", {
+          const response = await fetch("https://backend-messaging-app.onrender.com/api/images/upload", {
             method: "POST",
             body: formData,
             headers: {
