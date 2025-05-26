@@ -58,16 +58,16 @@ const MessagesScreen = ({ navigation }) => {
   const messageDeletedHandler = (data) => {
     try {
       console.log('Message deleted event:', data);
-      fetchConversations(); 
+      fetchConversations();
     } catch (error) {
       console.error('Error handling message delete:', error);
     }
   };
-  
+
   const messageRecalledHandler = (data) => {
     try {
       console.log('Message recalled event:', data);
-      fetchConversations(); 
+      fetchConversations();
     } catch (error) {
       console.error('Error handling message recall:', error);
     }
@@ -86,13 +86,26 @@ const MessagesScreen = ({ navigation }) => {
     }
   };
 
+  const newConservationHandler = () => {
+    try {
+      console.log('User status changed:', data);
+      if (data && data.userId) {
+        fetchConversations();
+      } else {
+        console.warn('Received invalid user status data:', data);
+      }
+    } catch (error) {
+      console.error('Error handling user status:', error);
+    }
+  };
+
   const realTimeHandler = () => {
-    fetchConversations(); 
+    fetchConversations();
   };
 
 
 
-  
+
 
   const toggleDropdownMenu = () => {
     setShowDropdownMenu(!showDropdownMenu)
@@ -103,7 +116,7 @@ const MessagesScreen = ({ navigation }) => {
       setLoading(true);
       console.log("Initializing socket connection...");
       const success = await socketService.init();
-      
+
       if (success) {
         console.log("Socket initialized successfully");
         setSocketConnected(true);
@@ -129,7 +142,7 @@ const MessagesScreen = ({ navigation }) => {
     }
 
     console.log("Setting up socket listeners");
-    
+
     try {
       socketService.on(SOCKET_EVENTS.NEW_MESSAGE, messageHandler);
       socketService.on(SOCKET_EVENTS.MESSAGE_READ, messageReadHandler);
@@ -194,7 +207,7 @@ const MessagesScreen = ({ navigation }) => {
 
     conversations.forEach((conversation) => {
       if (!conversation) return;
-      
+
       const conversationId = conversation?._id || conversation?.id || conversation?.conversationId;
       if (conversationId) {
         try {
@@ -212,7 +225,7 @@ const MessagesScreen = ({ navigation }) => {
       }
     });
   };
-  
+
   useEffect(() => {
     const loadUserAndConversations = async () => {
       try {
@@ -306,7 +319,7 @@ const MessagesScreen = ({ navigation }) => {
       const processedConversations = await Promise.all(
         data.map(async (conversation) => {
           if (!conversation) return null;
-          
+
           if (conversation.isGroup) {
             try {
               const groupDetails = await messageService.getGroupByConversationId(
@@ -395,6 +408,9 @@ const MessagesScreen = ({ navigation }) => {
   const formatLastMessagePreview = (message) => {
     if (!message) return ""
 
+    if (message.isRecalled) return "Tin nhắn đã bị thu hồi"
+    if (message.isDeleted) return "Tin nhắn đã bị xóa"
+
     switch (message.type) {
       case "image":
         return "[Hình ảnh]"
@@ -405,17 +421,14 @@ const MessagesScreen = ({ navigation }) => {
       case "text":
       default:
         const prefix = message.senderId === currentUser?.userId ? "Bạn: " : ""
-
-        if (message.isRecalled) return "Tin nhắn đã bị thu hồi"
-        if (message.isDeleted) return "Tin nhắn đã bị xóa"
         let content = message.content
         if (content && content.length > 30) {
           content = content.substring(0, 27) + "..."
         }
-
         return prefix + content
     }
   }
+
 
   const renderConversationItem = ({ item }) => (
     <TouchableOpacity style={styles.conversationItem} onPress={() => handleConversationPress(item)}>
@@ -482,7 +495,10 @@ const MessagesScreen = ({ navigation }) => {
           <Text style={styles.lastMessageText} numberOfLines={1}>
             {formatLastMessagePreview(item.lastMessage)}
           </Text>
-          {item.unreadCount > 0 && <View style={styles.notificationDot} />}
+          {item.lastMessage && item.lastMessage.readBy &&
+            !item.lastMessage.readBy.some(read => read.userId === currentUser?.userId ) && (
+              <View style={styles.notificationDot} />
+            )}
         </View>
       </View>
     </TouchableOpacity>
@@ -551,12 +567,7 @@ const MessagesScreen = ({ navigation }) => {
               <Text style={styles.dropdownMenuText}>Tạo nhóm</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.dropdownMenuItem}>
-              <View style={styles.dropdownMenuIconContainer}>
-                <Ionicons name="cloud-outline" size={24} color="#FFF" />
-              </View>
-              <Text style={styles.dropdownMenuText}>Cloud của tôi</Text>
-            </TouchableOpacity>
+
           </View>
         </View>
       )}

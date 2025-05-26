@@ -459,7 +459,6 @@ const MessageActionMenu = ({ visible, onClose, onForward, onReply, onRecall, onD
 const ChatDetailScreen = ({ route, navigation }) => {
 
   const [conversation, setConversation] = useState(route.params?.conversation);
-  const [forceUpdate, setForceUpdate] = useState(0);
   const conversationId = conversation?.id || conversation?._id;
 
   useEffect(() => {
@@ -762,10 +761,18 @@ const ChatDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!conversationId) return
     joinChat(conversationId)
-    const newMessageHandler = (data) => {
+    const newMessageHandler = async (data) => {
       if (data.message.conversationId === conversationId) {
         console.log("New message in current chat:", data)
         fetchMessages()
+        if (conversation.lastMessage) {
+          try {
+            await messageService.markMessageAsRead(conversation.lastMessage.messageId);
+          } catch (err) {
+            console.error("Error marking message as read:", err);
+          }
+        }
+
       }
     }
     const messageDeletedHandler = (data) => {
@@ -840,6 +847,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const stopListeningMessageRecalled = addListener("message_recalled", messageRecalledHandler);
     const stopListeningTyping = addListener("typing_indicator", typingStartHandler);
     const stopListeningTypingStop = addListener("typing_stopped", typingStopHandler);
+    const stopReadMessage = addListener("messages_read", realtimeHandler);
 
 
 
@@ -862,6 +870,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       stopListeningMessageRecalled();
       stopListeningTyping();
       stopListeningTypingStop();
+      stopReadMessage();
 
       stopListeningGroupUpdated();
       stopListeningGroupDissolved();
@@ -1358,11 +1367,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
       return (
         <View style={[styles.messageContainer, item.isMe ? styles.myMessage : styles.theirMessage]}>
           {!item.isMe && item.isFirstInSequence && (
-            <Image
-              source={conversation.avatar ? { uri: conversation.avatar } : require("../assets/icon.png")}
-              style={styles.messageAvatar}
-              onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
-            />
+            <MessageAvatar senderId={item.senderId} isGroup={conversation.isGroup} />
           )}
           {!item.isMe && !item.isFirstInSequence && <View style={styles.avatarPlaceholder} />}
           <View
@@ -1560,7 +1565,34 @@ const ChatDetailScreen = ({ route, navigation }) => {
                   : item.replyTo.sender?.fullName || "Unknown"}
               </Text>
               <Text style={styles.replyText} numberOfLines={1}>
-                {item.replyTo.content}
+                {(() => {
+                  if (item.replyTo.type === "image" || item.replyTo.type === "imageGroup") {
+                    return "[Hình ảnh]"
+                  }
+                  if (item.replyTo.type === "file") {
+                    return "[File]"
+                  }
+                  if (item.replyTo.type === "video") {
+                    return "[Video]"
+                  }
+                  if (item.replyTo.type === "emoji") {
+                    return item.replyTo.content
+                  }
+                  if (item.replyTo.type === "system") {
+                    return item.replyTo.content
+                  }
+                  if (item.replyTo.attachments && item.replyTo.attachments.length > 0) {
+                    const attachment = item.replyTo.attachments[0]
+                    if (attachment.type.startsWith("image/")) {
+                      return "[Hình ảnh]"
+                    }
+                    if (attachment.type.startsWith("video/")) {
+                      return "[Video]"
+                    }
+                    return "[File]"
+                  }
+                  return item.replyTo.content || "Tin nhắn"
+                })()}
               </Text>
             </View>
           )}
@@ -1846,7 +1878,33 @@ const ChatDetailScreen = ({ route, navigation }) => {
                     : conversation.name}
               </Text>
               <Text style={styles.replyBarText} numberOfLines={1}>
-                {replyingToMessage.content}
+                {(() => {
+
+                  if (replyingToMessage.type === "image" || replyingToMessage.type === "imageGroup") {
+                    return "[Hình ảnh]"
+                  }
+                  if (replyingToMessage.type === "file") {
+                    return "[File]"
+                  }
+                  if (replyingToMessage.type === "video") {
+                    return "[Video]"
+                  }
+                  if (replyingToMessage.type === "emoji") {
+                    return replyingToMessage.content
+                  }
+
+                  if (replyingToMessage.attachments && replyingToMessage.attachments.length > 0) {
+                    const attachment = replyingToMessage.attachments[0]
+                    if (attachment.type.startsWith("image/")) {
+                      return "[Hình ảnh]"
+                    }
+                    if (attachment.type.startsWith("video/")) {
+                      return "[Video]"
+                    }
+                    return "[File]"
+                  }
+                  return replyingToMessage.content || "Tin nhắn"
+                })()}
               </Text>
             </View>
           </View>
