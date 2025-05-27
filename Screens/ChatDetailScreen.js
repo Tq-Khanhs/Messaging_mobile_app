@@ -475,6 +475,21 @@ const ChatDetailScreen = ({ route, navigation }) => {
     console.log("Conversation updated", conversation);
   }, [conversation]);
 
+  useEffect(() => {
+  const markAsRead = async () => {
+    if (conversation?.lastMessage) {
+      try {
+        console.log("Marking message as read:", conversation.lastMessage.messageId);
+        await messageService.markMessageAsRead(conversation.lastMessage.messageId);
+      } catch (err) {
+        console.error("Error marking message as read:", err);
+      }
+    }
+  };
+
+  markAsRead();
+}, [conversation?.lastMessage?.messageId]);
+
 
   useEffect(() => {
     if (!conversationId) {
@@ -500,14 +515,14 @@ const ChatDetailScreen = ({ route, navigation }) => {
 
     joinChatRoom()
 
-    const newMessageHandler = (data) => {
+    const newMessageHandler =async(data) => {
       try {
         console.log("[ChatDetail] Socket new_message event received");
 
         if (!data) {
           console.log("[ChatDetail] No data received, fetching all messages");
           fetchMessages();
-          return;
+          
         }
 
         console.log("[ChatDetail] Data structure:", {
@@ -765,14 +780,6 @@ const ChatDetailScreen = ({ route, navigation }) => {
       if (data.message.conversationId === conversationId) {
         console.log("New message in current chat:", data)
         fetchMessages()
-        if (conversation.lastMessage) {
-          try {
-            await messageService.markMessageAsRead(conversation.lastMessage.messageId);
-          } catch (err) {
-            console.error("Error marking message as read:", err);
-          }
-        }
-
       }
     }
     const messageDeletedHandler = (data) => {

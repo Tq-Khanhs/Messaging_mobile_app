@@ -367,18 +367,23 @@ const MessagesScreen = ({ navigation }) => {
   }
 
   const handleConversationPress = async (conversation) => {
-    if (conversation.unreadCount > 0) {
+    if (
+      conversation.lastMessage.readBy &&
+      !conversation.lastMessage.readBy.some(read => read.userId === currentUser.userId)
+    ) {
       try {
-        if (conversation.lastMessage) {
-          await messageService.markMessageAsRead(conversation.lastMessage.messageId)
-        }
+        await messageService.markMessageAsRead(conversation.lastMessage.messageId);
+        fetchConversations()
+
         setConversations((prevConversations) =>
           prevConversations.map((conv) =>
-            conv.conversationId === conversation.conversationId ? { ...conv, unreadCount: 0 } : conv,
-          ),
-        )
+            conv.conversationId === conversation.conversationId
+              ? { ...conv, unreadCount: 0 }
+              : conv
+          )
+        );
       } catch (err) {
-        console.error("Error marking conversation as read:", err)
+        console.error("Error marking conversation as read:", err);
       }
     }
 
@@ -495,10 +500,19 @@ const MessagesScreen = ({ navigation }) => {
           <Text style={styles.lastMessageText} numberOfLines={1}>
             {formatLastMessagePreview(item.lastMessage)}
           </Text>
-          {item.lastMessage && item.lastMessage.readBy &&
-            !item.lastMessage.readBy.some(read => read.userId === currentUser?.userId ) && (
-              <View style={styles.notificationDot} />
-            )}
+          {item.lastMessage && item.lastMessage.readBy && item.lastMessage.senderId !== currentUser.userId && (
+            <>
+              {console.log('lastMessage:', item.lastMessage)}
+              {console.log('readBy:', item.lastMessage.readBy)}
+              {console.log('currentUser:', currentUser?.userId)}
+              {!item.lastMessage.readBy.some(read => {
+                console.log('Checking readBy userId:', read.userId, 'vs currentUserId:', currentUser?.userId);
+                return read.userId === currentUser?.userId;
+              }) && (
+                  <View style={styles.notificationDot} />
+                )}
+            </>
+          )}
         </View>
       </View>
     </TouchableOpacity>

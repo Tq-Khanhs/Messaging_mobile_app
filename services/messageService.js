@@ -200,14 +200,28 @@ export const messageService = {
     }
   },
 
-  // Mark message as read
   markMessageAsRead: async (messageId) => {
     try {
-      const response = await api.put(`/messages/messages/${messageId}/read`)
-      return response.data
+      const token = await AsyncStorage.getItem("authToken");
+
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await api.put(
+        `/messages/messages/${messageId}/read`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data;
     } catch (error) {
-      console.error("Mark message as read error:", error)
-      throw error
+      console.error("Mark message as read error:", error.response?.data || error.message);
+      throw error;
     }
   },
 
