@@ -69,7 +69,7 @@ const SignUpScreen = ({ navigation, route }) => {
         isRegistration: true,
       })
     } catch (err) {
-      Alert.alert("Lỗi", error || "Không thể gửi mã xác thực. Vui lòng thử lại sau.")
+      Alert.alert("Lỗi", "Email đã được dùng để đăng ký tài khoản khác")
     } finally {
       setIsLoading(false)
     }
